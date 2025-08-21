@@ -1,0 +1,122 @@
+{
+  "categories": [
+    {
+      "id": "general",
+      "title": "Obecná pravidla",
+      "icon": "⚖️",
+      "rules": [
+        {
+          "id": "respect",
+          "title": "Respekt k ostatním",
+          "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+          "severity": "high"
+        },
+        {
+          "id": "language",
+          "title": "Používání českého jazyka",
+          "description": "Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Mauris viverra venenenatis lacus. Sed cursus turpis a purus aliquam cursus.",
+          "severity": "medium"
+        },
+        {
+          "id": "cheating",
+          "title": "Zákaz cheatování",
+          "description": "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Proin pharetra nonummy pede. Mauris et orci.",
+          "severity": "high"
+        },
+        {
+          "id": "advertising",
+          "title": "Zákaz reklamy",
+          "description": "Aenean auctor wisi et urna. Aliquam erat volutpat. Duis ac turpis. Integer rutrum ante eu lacus. Vestibulum libero nisl, porta vel, scelerisque eget.",
+          "severity": "medium"
+        }
+      ]
+    },
+    {
+      "id": "roleplay",
+      "title": "Roleplay pravidla",
+      "icon": "🎭",
+      "rules": [
+        {
+          "id": "character",
+          "title": "Vytvoření postavy",
+          "description": "Fusce mauris. Vestibulum luctus nibh at lectus. Sed bibendum, nulla a faucibus semper, leo velit ultricies tellus, ac venenatis arcu wisi vel nisl.",
+          "severity": "high"
+        },
+        {
+          "id": "metagaming",
+          "title": "Zákaz metagamingu",
+          "description": "Morbi imperdiet, mauris ac auctor dictum, nisl ligula egestas nulla, et sollicitudin lorem quis bibendum dolor. Nam nibh.",
+          "severity": "high"
+        },
+        {
+          "id": "powergaming",
+          "title": "Zákaz powergamingu",
+          "description": "Suspendisse potenti. Praesent in mauris eu tortor porttitor accumsan. Mauris suscipit, ligula sit amet pharetra semper, nibh ante cursus purus.",
+          "severity": "high"
+        },
+        {
+          "id": "fear-rp",
+          "title": "Fear RP",
+          "description": "Vel sagittis lorem, cursus cursus purus. Sed aliquam ultrices mauris. Integer ante arcu, accumsan a, consectetuer eget, posuere ut, mauris.",
+          "severity": "medium"
+        }
+      ]
+    },
+    {
+      "id": "military",
+      "title": "Vojenská pravidla",
+      "icon": "🪖",
+      "rules": [
+        {
+          "id": "hierarchy",
+          "title": "Respektování hierarchie",
+          "description": "Praesent congue erat at massa. Sed cursus turpis a purus aliquam cursus. Aliquam erat volutpat. Morbi imperdiet, mauris ac auctor dictum.",
+          "severity": "high"
+        },
+        {
+          "id": "uniform",
+          "title": "Povinnost uniformy",
+          "description": "Nisl ligula egestas nulla, et sollicitudin lorem quis bibendum dolor. Nam nibh. Ut enim ad minim veniam, quis nostrud exercitation.",
+          "severity": "medium"
+        },
+        {
+          "id": "orders",
+          "title": "Plnění rozkazů",
+          "description": "Ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.",
+          "severity": "high"
+        },
+        {
+          "id": "equipment",
+          "title": "Zacházení s výzbrojí",
+          "description": "Eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+          "severity": "high"
+        }
+      ]
+    },
+    {
+      "id": "communication",
+      "title": "Komunikační pravidla",
+      "icon": "📻",
+      "rules": [
+        {
+          "id": "radio",
+          "title": "Používání rádia",
+          "description": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae.",
+          "severity": "medium"
+        },
+        {
+          "id": "voice-chat",
+          "title": "Hlasový chat",
+          "description": "Ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur.",
+          "severity": "medium"
+        },
+        {
+          "id": "ooc",
+          "title": "OOC komunikace",
+          "description": "Aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est.",
+          "severity": "low"
+        }
+      ]
+    }
+  ]
+}
