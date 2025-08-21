@@ -26,11 +26,11 @@
   --ring: oklch(0.85 0.18 85);
 
   /* Custom yellow gradient colors for sections */
-  --yellow-light: oklch(0.85 0.18 85);
-  --yellow-medium: oklch(0.65 0.15 85);
-  --yellow-dark: oklch(0.35 0.12 85);
-  --yellow-darker: oklch(0.18 0.08 85);
-  --yellow-darkest: oklch(0.08 0.02 85);
+  --yellow-light: oklch(84.979% 0.1738 86.555);
+  --yellow-medium: oklch(15.635% 0.03203 93.87);
+  --yellow-dark: oklch(0% 0 0);
+  --yellow-darker: oklch(23.339% 0.04786 94.389);
+  --yellow-darkest: oklch(19.298% 0.03962 95.196);
 
   --chart-1: oklch(0.85 0.18 85);
   --chart-2: oklch(0.65 0.15 85);

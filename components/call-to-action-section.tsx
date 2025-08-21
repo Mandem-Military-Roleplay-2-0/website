@@ -5,9 +5,9 @@ import { ArrowRight, Download } from "lucide-react"
 
 export function CallToActionSection() {
   return (
-    <section className="py-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <div className="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-6">
+    <section className="py-20 bg-card">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center drop-shadow-xl">
+        <div className="inline-block px-4 py-2 bg-primary text-black rounded-full text-sm font-medium mb-6">
           Připoj se ještě dnes
         </div>
 
@@ -21,14 +21,6 @@ export function CallToActionSection() {
           <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-3 text-lg">
             <ArrowRight className="mr-2 h-5 w-5" />
             Připojit se na server
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground px-8 py-3 text-lg bg-transparent"
-          >
-            <Download className="mr-2 h-5 w-5" />
-            Přijmout na server
           </Button>
         </div>
 

@@ -30,13 +30,13 @@ function StatItem({ value, suffix = "", label, delay = 0 }: StatItemProps) {
 
 export function StatsSection() {
   return (
-    <SectionWrapper variant="light" className="py-16 md:py-20">
+    <SectionWrapper variant="medium" className="py-16 md:py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-yellow-darkest mb-4">
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
             Naše komunita v číslech
           </h2>
-          <p className="text-xl text-yellow-darker max-w-2xl mx-auto">
+          <p className="text-xl text-gray-200 max-w-2xl mx-auto">
             Připoj se k rostoucí komunitě vojenských nadšenců
           </p>
         </div>

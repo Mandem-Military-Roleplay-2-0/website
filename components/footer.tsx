@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Shield, DiscIcon as Discord, Youtube, Instagram } from "lucide-react"
-
+import Image from "next/image"
 export function Footer() {
   const currentYear = new Date().getFullYear()
 
@@ -22,13 +22,19 @@ export function Footer() {
   }
 
   return (
-    <footer className="bg-card border-t border-border">
+    <footer className="bg-background/95 border-t border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo and Description */}
           <div className="md:col-span-2">
             <Link href="/" className="flex items-center space-x-2 mb-4">
-              <Shield className="h-8 w-8 text-primary" />
+              <Image
+                src="/logo.png"
+                alt="Mandem Military Logo"
+                width={32}
+                height={32}
+                className="h-8 w-8"
+              />
               <span className="font-serif font-bold text-xl text-foreground">Mandem Military</span>
             </Link>
             <p className="text-muted-foreground leading-relaxed mb-6 max-w-md">
