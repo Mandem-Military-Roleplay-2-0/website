@@ -35,8 +35,8 @@ interface RoleConfig {
 const roleMapping: Record<string, RoleConfig> = {
   "1407360962281082971": { // Owner
     category: "leadership",
-    title: "Zakladatel & Hlavní Admin",
-    description: "Zakladatel serveru s více než 5 lety zkušeností s FiveM servery.",
+    title: "Zakladatel & Majitel",
+    description: "Zakladatel serveru a majitel",
     icon: "Crown",
     priority: 1
   },
@@ -71,7 +71,7 @@ const roleMapping: Record<string, RoleConfig> = {
   "1407445883469041887": { // Tech Staff
     category: "technical",
     title: "Tech Staff", 
-    description: "Vývojář vlastních scriptů a technických řešení pro server.",
+    description: "Vývojář scriptů a technických řešení pro server.",
     icon: "Wrench",
     priority: 6
   },
