@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { DM_Sans, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -18,8 +18,12 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
 })
 
+export const viewport: Viewport = {
+  themeColor: "#ffba00", // sem patří barva
+}
+
 export const metadata: Metadata = {
-  title: "Mandem Military | FiveM Vojenský Server",
+  title: "Mandem Military | FiveM Military Server",
   description:
     "Připojte se k nejlepšímu vojenskému FiveM serveru. Mandem Military nabízí realistický vojenský roleplay s aktivní komunitou a profesionálním přístupem.",
   keywords: "FiveM, vojenský server, roleplay, Mandem Military, GTA V, multiplayer, vojenská simulace",
@@ -43,7 +47,7 @@ export const metadata: Metadata = {
     siteName: "Mandem Military",
     images: [
       {
-        url: "/og-image.jpg",
+        url: "/mandemLogo2.png",
         width: 1200,
         height: 630,
         alt: "Mandem Military FiveM Server",
@@ -57,7 +61,7 @@ export const metadata: Metadata = {
     title: "Mandem Military | FiveM Vojenský Server",
     description:
       "Připojte se k nejlepšímu vojenskému FiveM serveru. Realistický vojenský roleplay s aktivní komunitou.",
-    images: ["/og-image.jpg"],
+    images: ["/mandemLogo2.png"],
   },
   robots: {
     index: true,

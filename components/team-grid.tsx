@@ -179,7 +179,6 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
               alt={member.name}
               className="w-12 h-12 rounded-full object-cover border-2 border-border group-hover:border-primary/50 transition-colors duration-300"
               onError={(e) => {
-                // Fallback pro případ, kdy se avatar nenačte
                 const target = e.target as HTMLImageElement;
                 target.src = `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 5)}.png`;
               }}
