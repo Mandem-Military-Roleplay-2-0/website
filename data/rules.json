@@ -1,120 +1,242 @@
 {
   "categories": [
     {
-      "id": "general",
-      "title": "Obecná pravidla",
-      "icon": "⚖️",
-      "rules": [
-        {
-          "id": "respect",
-          "title": "Respekt k ostatním",
-          "description": "Svarda je negr ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
-          "severity": "high"
-        },
-        {
-          "id": "language",
-          "title": "Používání českého jazyka",
-          "description": "Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Mauris viverra venenenatis lacus. Sed cursus turpis a purus aliquam cursus.",
-          "severity": "medium"
-        },
-        {
-          "id": "cheating",
-          "title": "Zákaz cheatování",
-          "description": "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Proin pharetra nonummy pede. Mauris et orci.",
-          "severity": "high"
-        },
-        {
-          "id": "advertising",
-          "title": "Zákaz reklamy",
-          "description": "Aenean auctor wisi et urna. Aliquam erat volutpat. Duis ac turpis. Integer rutrum ante eu lacus. Vestibulum libero nisl, porta vel, scelerisque eget.",
-          "severity": "medium"
-        }
-      ]
-    },
-    {
-      "id": "roleplay",
-      "title": "Roleplay pravidla",
+      "id": "roleplay-basics",
+      "title": "Základy roleplay",
       "icon": "🎭",
       "rules": [
         {
-          "id": "character",
-          "title": "Vytvoření postavy",
-          "description": "Fusce mauris. Vestibulum luctus nibh at lectus. Sed bibendum, nulla a faucibus semper, leo velit ultricies tellus, ac venenatis arcu wisi vel nisl.",
-          "severity": "high"
-        },
-        {
-          "id": "metagaming",
-          "title": "Zákaz metagamingu",
-          "description": "Morbi imperdiet, mauris ac auctor dictum, nisl ligula egestas nulla, et sollicitudin lorem quis bibendum dolor. Nam nibh.",
-          "severity": "high"
-        },
-        {
-          "id": "powergaming",
-          "title": "Zákaz powergamingu",
-          "description": "Suspendisse potenti. Praesent in mauris eu tortor porttitor accumsan. Mauris suscipit, ligula sit amet pharetra semper, nibh ante cursus purus.",
-          "severity": "high"
-        },
-        {
-          "id": "fear-rp",
-          "title": "Fear RP",
-          "description": "Vel sagittis lorem, cursus cursus purus. Sed aliquam ultrices mauris. Integer ante arcu, accumsan a, consectetuer eget, posuere ut, mauris.",
-          "severity": "medium"
-        }
-      ]
-    },
-    {
-      "id": "military",
-      "title": "Vojenská pravidla",
-      "icon": "🪖",
-      "rules": [
-        {
-          "id": "hierarchy",
-          "title": "Respektování hierarchie",
-          "description": "Praesent congue erat at massa. Sed cursus turpis a purus aliquam cursus. Aliquam erat volutpat. Morbi imperdiet, mauris ac auctor dictum.",
-          "severity": "high"
-        },
-        {
-          "id": "uniform",
-          "title": "Povinnost uniformy",
-          "description": "Nisl ligula egestas nulla, et sollicitudin lorem quis bibendum dolor. Nam nibh. Ut enim ad minim veniam, quis nostrud exercitation.",
-          "severity": "medium"
-        },
-        {
-          "id": "orders",
-          "title": "Plnění rozkazů",
-          "description": "Ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.",
-          "severity": "high"
-        },
-        {
-          "id": "equipment",
-          "title": "Zacházení s výzbrojí",
-          "description": "Eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-          "severity": "high"
-        }
-      ]
-    },
-    {
-      "id": "communication",
-      "title": "Komunikační pravidla",
-      "icon": "📻",
-      "rules": [
-        {
-          "id": "radio",
-          "title": "Používání rádia",
-          "description": "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae.",
-          "severity": "medium"
-        },
-        {
-          "id": "voice-chat",
-          "title": "Hlasový chat",
-          "description": "Ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur.",
-          "severity": "medium"
+          "id": "roleplay",
+          "title": "ROLEPLAY",
+          "description": "Hraní za fiktivní postavu ve vymyšleném herním světě. Snažíme se na situace reagovat jako v reálném životě."
         },
         {
           "id": "ooc",
-          "title": "OOC komunikace",
-          "description": "Aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est.",
-          "severity": "low"
+          "title": "OOC (Out Of Character)",
+          "description": "Komunikace mezi hráči mimo RP. Informace získané mimo herní svět RP nelze využít v IC (Metagaming)."
+        },
+        {
+          "id": "ic",
+          "title": "IC (In Character)",
+          "description": "Výměna informací formou přímého rozhovoru v herním světě. Přenáší informace, které se dozvíte v herním světě (IC)."
+        }
+      ]
+    },
+    {
+      "id": "rp-commands",
+      "title": "RP příkazy",
+      "icon": "💬",
+      "rules": [
+        {
+          "id": "me-command",
+          "title": "/me příkaz",
+          "description": "Popisuje aktivitu postavy, nahrazuje animaci. Např. /me obvazuje si nohu"
+        },
+        {
+          "id": "do-command",
+          "title": "/do příkaz",
+          "description": "Popisuje vykonanou aktivitu, při které se čeká na odpověď jiného hráče. Do /do je zakázáno lhát. Do /do nesdílíme své myšlenky a pocity."
+        }
+      ]
+    },
+    {
+      "id": "forbidden-actions",
+      "title": "Zakázané činnosti",
+      "icon": "🚫",
+      "rules": [
+        {
+          "id": "metagaming",
+          "title": "METAGAMING",
+          "description": "Zneužití informací, co se dozvíte OOC a tyto informace následně využijeme v herním světě (IC). Je zakázáno využívat informace, které vaše postava nemá."
+        },
+        {
+          "id": "power-gaming",
+          "title": "Power Gaming",
+          "description": "Provádění nereálných úkonů a schopností, které v běžném životě nedokážete vykonat. Je přísně zakázáno. Např. /me zvedá vrtulník"
+        },
+        {
+          "id": "asspulling",
+          "title": "Asspulling",
+          "description": "Vytažení dlouhé zbraně nebo velkých předmětů z neznáma. Jedná se o Power Gaming."
+        },
+        {
+          "id": "bunny-hopping",
+          "title": "Bunny Hoping",
+          "description": "Je zakázané Bunny Hopovat za účelem vyhnutí střel, rychlého pohybu."
+        },
+        {
+          "id": "advertising",
+          "title": "Advertising",
+          "description": "Je zakázáno propagovat jiný server."
+        }
+      ]
+    },
+    {
+      "id": "combat-rules",
+      "title": "Bojová pravidla",
+      "icon": "⚔️",
+      "rules": [
+        {
+          "id": "kos",
+          "title": "KOS",
+          "description": "Zabití na první pohled bez předešlé RP akce."
+        },
+        {
+          "id": "rdm",
+          "title": "RDM",
+          "description": "Hromadné zabíjení na první pohled bez předchozí RP akce."
+        },
+        {
+          "id": "vdm",
+          "title": "VDM",
+          "description": "Úmyslné srážení hráčů vozidlem. Auto můžete použít jenom v případě kdy už nemáte se, jak jinak ubránit proti daným nepřátelům."
+        },
+        {
+          "id": "combat-log",
+          "title": "Combat log",
+          "description": "Odpojení hry za účelem vyhnutí se RP akci. Po vynuceném odpojení se navracíte do RP akce (Restart, Pád hry)."
+        },
+        {
+          "id": "combat-comeback",
+          "title": "Combat Comeback",
+          "description": "Po respawnu se nemůžete vrátit do RP akce ve které jste byl (Raid, Patrola, Akce kterou byste narušil vaším vrácením do akce)."
+        },
+        {
+          "id": "crosshair",
+          "title": "CROSS-HAIR",
+          "description": "Na našem serveru je cross-hair povolen."
+        }
+      ]
+    },
+    {
+      "id": "character-management",
+      "title": "Správa postavy",
+      "icon": "👤",
+      "rules": [
+        {
+          "id": "pk",
+          "title": "PK (Player Kill)",
+          "description": "Pro platné PK je potřeba do Local Chatu potřeba napsat 'PK' tudíž si dalších 12 hodin nebudete pamatovat danou RP akci."
+        },
+        {
+          "id": "ck",
+          "title": "CK (Character Kill)",
+          "description": "Zabití postavy nastálo. Za danou postavu už dále nebudete moct hrát. CK na jinou osobu musí být schválené v ticketu od Staff Teamu."
+        },
+        {
+          "id": "self-ck",
+          "title": "SelfCK",
+          "description": "Jedná se o CK na svoji postavu. CK si schvalujte sami, ale musí k tomu být důvod a také o tom musí vědět vedení frakce ve které působíte."
+        },
+        {
+          "id": "nvl",
+          "title": "NVL (Not Valuing Life)",
+          "description": "Nevážení si vlastního života. Příklad: Děláte jen tak kamikadze."
+        },
+        {
+          "id": "nonrp-acting",
+          "title": "NonRP Acting",
+          "description": "Každý hraje za svůj stát a zemi tím pádem si teroristé nebudou hrát na armádu a armáda na teroristy (U Armád je výjimka sledovací akce)."
+        }
+      ]
+    },
+    {
+      "id": "medical-rules",
+      "title": "Zdravotnická pravidla",
+      "icon": "🏥",
+      "rules": [
+        {
+          "id": "nonrp-injuries",
+          "title": "NonRP Injuries",
+          "description": "Erpení zranění které by v reálném životě vyžadovalo lékařské ošetření."
+        },
+        {
+          "id": "medical-vehicles",
+          "title": "Vozidla s červeným křížem",
+          "description": "Je zakázáno sestřelovat vozidla s červeným křížem."
+        },
+        {
+          "id": "safe-zone",
+          "title": "Safe Zone",
+          "description": "Bere se oblast okolo nemocnice. Nejde o bitevní pole. Střelba v oblasti je zakázaná."
+        },
+        {
+          "id": "gross-rp",
+          "title": "Gross RP",
+          "description": "Automaticky povoleno. Je možnost si požádat o zmírnění. Je zakázáno dělat trvalé následky."
+        }
+      ]
+    },
+    {
+      "id": "military-operations",
+      "title": "Vojenské operace",
+      "icon": "🪖",
+      "rules": [
+        {
+          "id": "passive-rp",
+          "title": "PassiveRP",
+          "description": "Erpení passivu na základnách z důvodu passivního počtu vojáků. Výjimka jsou raidy které jsou schválené přes ticket."
+        },
+        {
+          "id": "raids",
+          "title": "Útok na území (Raid)",
+          "description": "Jestli budete chtít utočit na cizí území musíte si o to požádat v ticketu kde o tom bude hlasovat Faction Team. Nevztahuje se na prozkoumání území. Jestli se jedná o únos člena armády je raid automaticky povolen."
+        },
+        {
+          "id": "anti-air",
+          "title": "Anti-Air Vozidla",
+          "description": "Je zakázáno používat protivzdušnou techniku na pěchotu a vozidla."
+        },
+        {
+          "id": "radio-communication",
+          "title": "Vysílačka",
+          "description": "Vysílačka je zašifrovaná tím pádem se na ni jen tak někdo nedostane."
+        }
+      ]
+    },
+    {
+      "id": "equipment-clothing",
+      "title": "Výstroj a oblečení",
+      "icon": "👕",
+      "rules": [
+        {
+          "id": "clothing",
+          "title": "Oblečení",
+          "description": "Každá armáda může požívat oblečení, které jim je státem dáno a které používají v reálném životě. Teroristé využívají oblečení stejné, co v reálném životě."
+        },
+        {
+          "id": "inventory-rule",
+          "title": "Pravidlo Inventáře",
+          "description": "Veškeré předměty, co má osoba u sebe (v inventáři), má u sebe."
+        },
+        {
+          "id": "robbery",
+          "title": "Okrádání",
+          "description": "Je zakázáno okrádat při akcích (Raidy, přestřelky ve velkých počtech). Je zakázáno okrádat bez předešlé RP akce."
+        }
+      ]
+    },
+    {
+      "id": "faction-management",
+      "title": "Správa frakcí",
+      "icon": "🤝",
+      "rules": [
+        {
+          "id": "faction-alliances",
+          "title": "Spojování Frakcí",
+          "description": "Maximální počet v jedné alianci je 3 armády. Ohledně aliancí je potřeba si vytvořit ticket a tam to projednat s Faction Teamem. Vytvoření Aliance musí dávat smysl z pohledu reálného života."
+        }
+      ]
+    },
+    {
+      "id": "general-violations",
+      "title": "Obecné porušení pravidel",
+      "icon": "⚠️",
+      "rules": [
+        {
+          "id": "fail-rp",
+          "title": "FailRP",
+          "description": "Jedná se o pokažení RP akce nějakým pravidlem serveru."
         }
       ]
     }

@@ -62,9 +62,6 @@ export function RulesSection() {
                           <span className="text-primary font-bold text-lg">{index + 1}.</span>
                           <h3 className="font-serif font-bold text-foreground">{rule.title}</h3>
                         </div>
-                        <Badge className={severityColors[rule.severity as keyof typeof severityColors]}>
-                          {severityLabels[rule.severity as keyof typeof severityLabels]}
-                        </Badge>
                       </div>
                       <p className="text-muted-foreground leading-relaxed ml-8">{rule.description}</p>
                     </div>
