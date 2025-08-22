@@ -52,7 +52,7 @@ export function Navigation() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-foreground hover:text-primary transition-colors duration-200 font-medium"
+                className="text-foreground hover:text-primary transition-colors duration-200 font-medium hover:scale-105 transition-all"
               >
                 {item.label}
               </Link>

@@ -48,8 +48,6 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/mandemLogo2.png",
-        width: 1200,
-        height: 630,
         alt: "Mandem Military FiveM Server",
       },
     ],

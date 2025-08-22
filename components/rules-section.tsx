@@ -2,25 +2,15 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import rulesData from "@/data/rules.json"
 
-const severityColors = {
-  high: "bg-destructive text-destructive-foreground",
-  medium: "bg-secondary text-secondary-foreground",
-  low: "bg-muted text-muted-foreground",
-}
-
-const severityLabels = {
-  high: "Vysoká",
-  medium: "Střední",
-  low: "Nízká",
-}
 
 export function RulesSection() {
-  const [openCategories, setOpenCategories] = useState<string[]>(["general"])
+  const [openCategories, setOpenCategories] = useState<string[]>(
+    rulesData.categories.map(category => category.id)
+  )
 
   const toggleCategory = (categoryId: string) => {
     setOpenCategories((prev) =>
