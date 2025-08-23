@@ -50,7 +50,7 @@ const roleMapping: Record<string, RoleConfig> = {
   },
   "1407360658542035008": { // Authority
     category: "leadership",
-    title: "Autorita",
+    title: "Authority",
     description: "Vysoká pozice s rozhodovací pravomocí nad chodem serveru.",
     icon: "Shield", 
     priority: 3
@@ -198,6 +198,7 @@ export async function GET() {
     }
 
     const members: DiscordMember[] = await membersRes.json();
+
     const targetRoles = Object.keys(roleMapping);
     
     // Filtrování a mapování členů s potřebnými rolemi
@@ -215,10 +216,11 @@ export async function GET() {
         const roleColor = roleColors[highestRole.roleId];
         const hexColor = roleColor ? `#${roleColor.toString(16).padStart(6, '0')}` : '#6366f1';
         const textColor = getContrastColor(hexColor);
+        console.log(JSON.stringify)
 
         return {
           id: member.user.id,
-          name: member.global_name || member.user.username,
+          name: member.user.global_name || member.user.username,
           username: member.user.username,
           avatar: member.user.avatar ? 
             `https://cdn.discordapp.com/avatars/${member.user.id}/${member.user.avatar}.png?size=256` : 
