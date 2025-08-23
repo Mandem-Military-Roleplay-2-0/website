@@ -6,6 +6,10 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Náš tým | Mandem Military",
   description: "Seznamte se s týmem administrátorů a moderátorů serveru Mandem Military.",
+  openGraph: {
+    title: "Náš tým | Mandem Military",
+    description: "Seznamte se s týmem administrátorů a moderátorů serveru Mandem Military.",
+  },
 }
 
 export default function TeamPage() {

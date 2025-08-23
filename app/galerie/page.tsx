@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: "Galerie | Mandem Military",
   description:
     "Prohlédněte si fotografie a screenshoty z našeho FiveM serveru. Nejlepší momenty z vojenského roleplay.",
+  openGraph: {
+    title: "Galerie | Mandem Military",
+    description:
+      "Prohlédněte si fotografie a screenshoty z našeho FiveM serveru. Nejlepší momenty z vojenského roleplay.",
+  },
 }
 
 export default function GalleryPage() {

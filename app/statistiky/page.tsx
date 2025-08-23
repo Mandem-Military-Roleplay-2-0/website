@@ -6,6 +6,11 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Statistiky serveru | Mandem Military",
   description: "Aktuální statistiky našeho FiveM serveru - počet hráčů, uptime, a další důležité informace.",
+  openGraph: {
+    title: "Statistiky serveru | Mandem Military",
+    description:
+      "Aktuální statistiky našeho FiveM serveru - počet hráčů, uptime, a další důležité informace.",
+  },
 }
 
 export default function StatsPage() {

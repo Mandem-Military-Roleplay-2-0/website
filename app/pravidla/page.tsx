@@ -6,6 +6,10 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Pravidla serveru | Mandem Military",
   description: "Přečtěte si pravidla našeho FiveM serveru. Důležité informace pro všechny hráče Mandem Military.",
+  openGraph: {
+    title: "Pravidla serveru | Mandem Military",
+    description: "Přečtěte si pravidla našeho FiveM serveru. Důležité informace pro všechny hráče Mandem Military.",
+  },
 }
 
 export default function RulesPage() {

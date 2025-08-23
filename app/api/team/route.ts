@@ -21,6 +21,7 @@ interface DiscordMember {
   user: DiscordUser;
   nick: string | null;
   roles: string[];
+  global_name: string | null;
 }
 
 interface RoleConfig {
@@ -217,7 +218,7 @@ export async function GET() {
 
         return {
           id: member.user.id,
-          name: member.nick || member.user.username,
+          name: member.global_name || member.user.username,
           username: member.user.username,
           avatar: member.user.avatar ? 
             `https://cdn.discordapp.com/avatars/${member.user.id}/${member.user.avatar}.png?size=256` : 
