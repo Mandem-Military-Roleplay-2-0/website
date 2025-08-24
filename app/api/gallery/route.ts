@@ -182,6 +182,7 @@ async function saveGalleryData(images: GalleryImage[]): Promise<void> {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false, // vždy přepíše stejný soubor
+      allowOverwrite: true,
     });
     console.log("Gallery data saved to blob");
   } catch (error) {
