@@ -17,7 +17,7 @@ export function HeroSection() {
           muted
           playsInline
         />
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/50 via-black/80 to-primary/20 backdrop-blur-sm" />
       </div>
 
 
