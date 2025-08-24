@@ -139,6 +139,8 @@ export function GalleryGrid() {
                   <div className="absolute inset-0 bg-gray-200 animate-pulse" />
                 )}
                 <Image
+                  loading="lazy"
+                  priority={false}
                   src={image.src}
                   alt={image.alt}
                   fill
