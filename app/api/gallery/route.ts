@@ -402,7 +402,8 @@ async function downloadImageSafely(url: string, filename: string, maxRetries = 2
       const blob = await put(uniqueFilename, buffer, { 
         access: 'public',
         contentType: contentType || 'image/jpeg',
-        addRandomSuffix: false // Už máme vlastní suffix
+        addRandomSuffix: false,
+        allowOverwrite: true
       });
       
       console.log(`Successfully uploaded ${filename} as ${uniqueFilename}`);
@@ -498,6 +499,7 @@ async function saveGalleryDataToStorage(cacheData: CachedGalleryData): Promise<b
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
+      allowOverwrite: true
     });
     
     galleryCache = { ...dataToSave };
