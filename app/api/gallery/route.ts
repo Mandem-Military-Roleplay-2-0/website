@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import fs from 'fs/promises';
-import path from 'path';
 import { put, del, head } from '@vercel/blob';
 
 export const runtime = "nodejs";
 
-// TypeScript interfaces
+// Interfaces
 interface DiscordMessage {
   id: string;
   channel_id: string;
@@ -18,7 +16,6 @@ interface DiscordMessage {
     global_name: string | null;
   };
   attachments: DiscordAttachment[];
-  reactions?: DiscordReaction[];
   timestamp: string;
 }
 
@@ -31,16 +28,6 @@ interface DiscordAttachment {
   width?: number;
   height?: number;
   content_type?: string;
-}
-
-interface DiscordReaction {
-  emoji: {
-    id: string | null;
-    name: string;
-  };
-  count: number;
-  me: boolean;
-  users?: string[];
 }
 
 interface GalleryImage {
@@ -56,334 +43,514 @@ interface GalleryImage {
   height?: number;
 }
 
-// Oprávněné role pro schvalování fotek
-const APPROVED_ROLES = [
-  "1407360962281082971", // Owner
-  "1407360658542035009", // Management
-  "1407360658542035008", // Authority
-  "1407375299133313127"  // Community Management
-];
-
-const GALLERY_CHANNEL_ID = "1407360658952945698";
-const CROWN_EMOJI = "👑"; // :crown: emoji
-
-// Generate title from message content or fallback to filename
-function generateTitle(messageContent: string, filename: string): string {
-  // Clean message content - remove URLs, mentions, and extra whitespace
-  const cleanContent = messageContent
-    .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
-    .replace(/<@[!&]?\d+>/g, '') // Remove user/role mentions
-    .replace(/<#\d+>/g, '') // Remove channel mentions
-    .replace(/:\w+:/g, '') // Remove custom emojis
-    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-    .trim();
-
-  // Use cleaned content if it's not empty and reasonable length
-  if (cleanContent && cleanContent.length > 0 && cleanContent.length <= 100) {
-    return cleanContent;
-  }
-
-  // Fallback to filename without extension
-  return filename.split('.')[0] || 'Bez názvu';
+interface CachedGalleryData {
+  images: GalleryImage[];
+  lastUpdate: number;
+  lastDiscordCheck: number;
+  messageIds: string[];
 }
 
+// Configuration
+const CONFIG = {
+  APPROVED_ROLES: [
+    "1407360962281082971", // Owner
+    "1407360658542035009", // Management  
+    "1407360658542035008", // Authority
+    "1407375299133313127"  // Community Management
+  ],
+  GALLERY_CHANNEL_ID: "1407360658952945698",
+  CROWN_EMOJI: "👑",
+  CACHE_TTL: 2 * 60 * 1000, // 2 minuty pro data
+  DISCORD_CHECK_TTL: 30 * 1000, // 30 sekund pro kontrolu Discord zpráv
+  ROLE_CACHE_TTL: 15 * 60 * 1000, // 15 minut pro role
+  MAX_CONCURRENT: 3,
+  REQUEST_TIMEOUT: 8000,
+};
 
-// Download and save image from Discord CDN
-async function downloadImage(url: string, filename: string): Promise<string> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    
-    const buffer = await response.arrayBuffer();
-    const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-    
-    const blob = await put(sanitizedFilename, buffer, {
-      access: 'public',
-    });
-    
-    return blob.url; // Returns full URL to blob
-  } catch (error) {
-    console.error('Error downloading image:', error);
-    throw error;
-  }
+// Global cache - nyní obsahuje více informací
+let galleryCache: CachedGalleryData | null = null;
+const roleCache = new Map<string, { hasRole: boolean; timestamp: number }>();
+
+// Lock pro prevenci současného zpracování
+let processingLock = false;
+
+// Utility: Create fetch with timeout
+function fetchWithTimeout(url: string, options: any, timeout = CONFIG.REQUEST_TIMEOUT) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), timeout)
+    )
+  ]);
 }
 
-
-// Check if user has approved role
+// Fast role check with aggressive caching
 async function hasApprovedRole(userId: string, guildId: string, botToken: string): Promise<boolean> {
+  const cacheKey = `${userId}_${guildId}`;
+  const cached = roleCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < CONFIG.ROLE_CACHE_TTL) {
+    return cached.hasRole;
+  }
+
   try {
-    const memberRes = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, {
-      headers: {
-        Authorization: `Bot ${botToken}`,
-      },
-    });
+    const response = await fetchWithTimeout(
+      `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
+      {
+        headers: { Authorization: `Bot ${botToken}` },
+      }
+    );
 
-    if (!memberRes.ok) return false;
+    if (!response.ok) {
+      roleCache.set(cacheKey, { hasRole: false, timestamp: Date.now() });
+      return false;
+    }
 
-    const member = await memberRes.json();
-    return member.roles.some((roleId: string) => APPROVED_ROLES.includes(roleId));
+    const member = await response.json();
+    const hasRole = member.roles.some((roleId: string) => 
+      CONFIG.APPROVED_ROLES.includes(roleId)
+    );
+    
+    roleCache.set(cacheKey, { hasRole, timestamp: Date.now() });
+    return hasRole;
   } catch (error) {
-    console.error('Error checking user roles:', error);
+    console.error(`Role check failed for ${userId}:`, error);
+    roleCache.set(cacheKey, { hasRole: false, timestamp: Date.now() });
     return false;
   }
 }
 
-// Get users who reacted with crown emoji
-async function getCrownReactionUsers(messageId: string, channelId: string, botToken: string): Promise<string[]> {
+// Get crown reaction users
+async function getCrownUsers(messageId: string, botToken: string): Promise<string[]> {
   try {
-    const reactionsRes = await fetch(
-      `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}/reactions/${encodeURIComponent(CROWN_EMOJI)}`,
+    const response = await fetchWithTimeout(
+      `https://discord.com/api/v10/channels/${CONFIG.GALLERY_CHANNEL_ID}/messages/${messageId}/reactions/${encodeURIComponent(CONFIG.CROWN_EMOJI)}`,
       {
-        headers: {
-          Authorization: `Bot ${botToken}`,
-        },
-      }
+        headers: { Authorization: `Bot ${botToken}` },
+      },
+      5000 // Kratší timeout pro reakce
     );
 
-    if (!reactionsRes.ok) return [];
-
-    const users = await reactionsRes.json();
+    if (!response.ok) return [];
+    
+    const users = await response.json();
     return users.map((user: any) => user.id);
   } catch (error) {
-    console.error('Error getting reaction users:', error);
+    // Tichý failure - reakce nejsou kritické
     return [];
   }
 }
 
-async function loadGalleryData(): Promise<GalleryImage[]> {
-  try {
-    // nejdřív zjistíme, jestli soubor existuje
-    const blob = await head("gallery.json").catch(() => null);
-    if (!blob) return [];
+// Generate title from content
+function generateTitle(content: string, filename: string): string {
+  const clean = content
+    .replace(/https?:\/\/[^\s]+/g, '')
+    .replace(/<@[!&]?\d+>/g, '')
+    .replace(/<#\d+>/g, '')
+    .replace(/:\w+:/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-    const res = await fetch(blob.url);
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (error) {
-    console.error("Error loading gallery.json from blob:", error);
-    return [];
-  }
+  return (clean && clean.length <= 100) ? clean : filename.split('.')[0] || 'Bez názvu';
 }
 
-
-async function deleteImage(blobUrl: string): Promise<void> {
+// Download image with retry
+async function downloadImage(url: string, filename: string): Promise<string> {
   try {
-    // Vercel Blob URLs vypadají jako: https://xyz.public.blob.vercel-storage.com/filename
-    await del(blobUrl);
-    console.log(`Blob deleted: ${blobUrl}`);
+    const response = await fetchWithTimeout(url, {}, 15000); // Delší timeout pro download
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const buffer = await response.arrayBuffer();
+    const sanitized = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+    
+    const blob = await put(sanitized, buffer, { access: 'public' });
+    return blob.url;
   } catch (error) {
-    console.error(`Error deleting blob ${blobUrl}:`, error);
-  }
-}
-
-async function saveGalleryData(images: GalleryImage[]): Promise<void> {
-  try {
-    await put("gallery.json", JSON.stringify(images, null, 2), {
-      access: "public",
-      contentType: "application/json",
-      addRandomSuffix: false, // vždy přepíše stejný soubor
-      allowOverwrite: true,
-    });
-    console.log("Gallery data saved to blob");
-  } catch (error) {
-    console.error("Error saving gallery.json to blob:", error);
+    console.error(`Download failed for ${filename}:`, error);
     throw error;
   }
 }
 
-export async function GET() {
+// Load gallery data from blob storage
+async function loadGalleryDataFromStorage(): Promise<CachedGalleryData> {
   try {
-    const guildId = process.env.DISCORD_GUILD_ID;
-    const botToken = process.env.DISCORD_BOT_TOKEN;
-
-    if (!guildId || !botToken) {
-      return NextResponse.json({ 
-        error: "Missing environment variables" 
-      }, { status: 500 });
+    const blob = await head("gallery.json").catch(() => null);
+    if (!blob) {
+      return {
+        images: [],
+        lastUpdate: 0,
+        lastDiscordCheck: 0,
+        messageIds: []
+      };
     }
 
+    const response = await fetchWithTimeout(blob.url, {}, 5000);
+    if (!response.ok) throw new Error('Failed to fetch gallery data');
+    
+    const data = await response.json();
+    
+    // Backwards compatibility - pokud je stará struktura
+    if (Array.isArray(data)) {
+      return {
+        images: data,
+        lastUpdate: Date.now(),
+        lastDiscordCheck: 0,
+        messageIds: data.map((img: GalleryImage) => img.messageId)
+      };
+    }
+    
+    return data;
+  } catch (error) {
+    console.error("Failed to load gallery data:", error);
+    return {
+      images: [],
+      lastUpdate: 0,
+      lastDiscordCheck: 0,
+      messageIds: []
+    };
+  }
+}
 
-    // Load existing gallery data
-    let galleryImages = await loadGalleryData();
+// Save gallery data with enhanced structure
+async function saveGalleryData(cacheData: CachedGalleryData): Promise<void> {
+  try {
+    await put("gallery.json", JSON.stringify(cacheData), {
+      access: "public",
+      contentType: "application/json",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+    
+    // Update in-memory cache
+    galleryCache = { ...cacheData };
+    console.log(`Saved ${cacheData.images.length} images to storage`);
+  } catch (error) {
+    console.error("Failed to save gallery data:", error);
+    throw error;
+  }
+}
 
-    // Fetch recent messages from gallery channel
-    const messagesRes = await fetch(
-      `https://discord.com/api/v10/channels/${GALLERY_CHANNEL_ID}/messages?limit=100`,
+// Delete blob with error handling
+async function deleteBlob(url: string): Promise<void> {
+  try {
+    await del(url);
+  } catch (error) {
+    console.error(`Failed to delete blob ${url}:`, error);
+  }
+}
+
+// Zkontroluj jestli se změnily zprávy v Discordu
+async function checkDiscordMessages(botToken: string): Promise<string[]> {
+  try {
+    const response = await fetchWithTimeout(
+      `https://discord.com/api/v10/channels/${CONFIG.GALLERY_CHANNEL_ID}/messages?limit=50`,
       {
-        headers: {
-          Authorization: `Bot ${botToken}`,
-        },
+        headers: { Authorization: `Bot ${botToken}` },
+      },
+      5000 // Krátký timeout pro rychlou kontrolu
+    );
+
+    if (!response.ok) {
+      throw new Error(`Discord API error: ${response.status}`);
+    }
+
+    const messages: DiscordMessage[] = await response.json();
+    return messages.map(m => m.id);
+  } catch (error) {
+    console.error("Failed to check Discord messages:", error);
+    return [];
+  }
+}
+
+// Hlavní funkce pro zpracování galerie
+async function processGalleryUpdate(
+  forceUpdate: boolean = false
+): Promise<{ images: GalleryImage[]; totalCount: number; fromCache: boolean; stats?: any }> {
+  
+  // Prevence současného zpracování
+  if (processingLock && !forceUpdate) {
+    console.log('Processing already in progress, returning cached data');
+    if (galleryCache) {
+      return {
+        images: galleryCache.images,
+        totalCount: galleryCache.images.length,
+        fromCache: true
+      };
+    }
+  }
+
+  const startTime = Date.now();
+  let cacheData = galleryCache;
+
+  try {
+    // Load from storage if not in memory
+    if (!cacheData) {
+      console.log('Loading gallery data from storage...');
+      cacheData = await loadGalleryDataFromStorage();
+      galleryCache = cacheData;
+    }
+
+    const now = Date.now();
+    
+    // Zkontroluj jestli potřebujeme vůbec kontrolovat Discord
+    const needsDiscordCheck = 
+      forceUpdate || 
+      !cacheData.lastDiscordCheck || 
+      (now - cacheData.lastDiscordCheck) > CONFIG.DISCORD_CHECK_TTL;
+
+    if (!needsDiscordCheck) {
+      console.log('Using cached data, no Discord check needed');
+      return {
+        images: cacheData.images,
+        totalCount: cacheData.images.length,
+        fromCache: true
+      };
+    }
+
+    const { DISCORD_GUILD_ID: guildId, DISCORD_BOT_TOKEN: botToken } = process.env;
+    if (!guildId || !botToken) {
+      throw new Error("Missing environment variables");
+    }
+
+    console.log('Checking for Discord message changes...');
+    
+    // Rychlá kontrola jestli se změnily zprávy
+    const currentMessageIds = await checkDiscordMessages(botToken);
+    const existingMessageIds = new Set(cacheData.messageIds);
+    const newMessageIds = new Set(currentMessageIds);
+    
+    // Porovnej zprávy
+    const hasChanges = 
+      currentMessageIds.length !== cacheData.messageIds.length ||
+      currentMessageIds.some(id => !existingMessageIds.has(id)) ||
+      cacheData.messageIds.some(id => !newMessageIds.has(id));
+
+    // Update lastDiscordCheck
+    cacheData.lastDiscordCheck = now;
+
+    if (!hasChanges && !forceUpdate) {
+      console.log('No message changes detected, using cache');
+      // Save updated check time
+      await saveGalleryData(cacheData);
+      
+      return {
+        images: cacheData.images,
+        totalCount: cacheData.images.length,
+        fromCache: true,
+        stats: { duration: Date.now() - startTime }
+      };
+    }
+
+    console.log('Message changes detected, processing updates...');
+    processingLock = true;
+
+    // Získej kompletní zprávy pouze pokud jsou změny
+    const messagesResponse = await fetchWithTimeout(
+      `https://discord.com/api/v10/channels/${CONFIG.GALLERY_CHANNEL_ID}/messages?limit=100`,
+      {
+        headers: { Authorization: `Bot ${botToken}` },
       }
     );
 
-    if (!messagesRes.ok) {
-      console.error("Failed to fetch messages:", await messagesRes.text());
-      return NextResponse.json({ 
-        images: galleryImages,
-        totalCount: galleryImages.length
-      });
+    if (!messagesResponse.ok) {
+      throw new Error("Failed to fetch detailed messages");
     }
 
-    const messages: DiscordMessage[] = await messagesRes.json();
-    let changesMade = false;
+    const messages: DiscordMessage[] = await messagesResponse.json();
+    const messagesWithImages = messages.filter(m => 
+      m.attachments.some(a => a.content_type?.startsWith('image/'))
+    );
 
-    // First, check for removed messages and remove their blobs
-    const messageIds = new Set(messages.map(m => m.id));
-    const imagesToRemove = galleryImages.filter(img => !messageIds.has(img.messageId));
-    
-    for (const imageToRemove of imagesToRemove) {
-      // Delete blob (src is now blob URL)
-      await deleteImage(imageToRemove.src);
-      
-      // Remove from gallery array
-      const index = galleryImages.findIndex(img => img.id === imageToRemove.id);
-      if (index > -1) {
-        galleryImages.splice(index, 1);
-        changesMade = true;
-        console.log(`Blob removed due to deleted message: ${imageToRemove.title} by ${imageToRemove.author}`);
-      }
-    }
+    console.log(`Processing ${messagesWithImages.length} messages with images`);
 
-    // Process messages with image attachments
-    for (const message of messages) {
-      if (message.attachments.length === 0) continue;
-
-      // Check if message already processed
-      const existingImages = galleryImages.filter(img => img.messageId === message.id);
-      
-      // Check for crown reactions
-      const crownReactionUsers = await getCrownReactionUsers(message.id, GALLERY_CHANNEL_ID, botToken);
-      
-      // Check if any crown reactor has approved role
-      let hasApproval = false;
-      for (const userId of crownReactionUsers) {
-        if (await hasApprovedRole(userId, guildId, botToken)) {
-          hasApproval = true;
-          break;
-        }
-      }
-
-      // If there are existing images but no approval anymore, remove them
-      if (existingImages.length > 0 && !hasApproval) {
-        for (const existingImage of existingImages) {
-          // Delete blob (src is now blob URL)
-          await deleteImage(existingImage.src);
-          
-          // Remove from gallery array
-          const index = galleryImages.findIndex(img => img.id === existingImage.id);
-          if (index > -1) {
-            galleryImages.splice(index, 1);
-            changesMade = true;
-            console.log(`Blob removed due to lost approval: ${existingImage.title} by ${existingImage.author}`);
+    // Zpracuj zprávy paralelně ale s limitem
+    const messagePromises = messagesWithImages.map(async (message) => {
+      try {
+        const crownUsers = await getCrownUsers(message.id, botToken);
+        
+        // Zkontroluj role pro všechny crown users
+        let hasApproval = false;
+        for (const userId of crownUsers) {
+          if (await hasApprovedRole(userId, guildId, botToken)) {
+            hasApproval = true;
+            break;
           }
         }
-        continue;
+
+        if (!hasApproval) return null;
+
+        return {
+          message,
+          attachments: message.attachments.filter(a => a.content_type?.startsWith('image/'))
+        };
+      } catch (error) {
+        console.error(`Error processing message ${message.id}:`, error);
+        return null;
       }
+    });
 
-      // If no approval, skip adding new images
-      if (!hasApproval) continue;
+    // Process in smaller batches
+    const approvedMessages = [];
+    for (let i = 0; i < messagePromises.length; i += CONFIG.MAX_CONCURRENT) {
+      const batch = messagePromises.slice(i, i + CONFIG.MAX_CONCURRENT);
+      const results = await Promise.allSettled(batch);
+      const successful = results
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value !== null)
+        .map(r => r.value);
+      approvedMessages.push(...successful);
+    }
 
-      // If already processed and still has approval, skip
-      if (existingImages.length > 0) continue;
+    console.log(`Found ${approvedMessages.length} approved messages`);
 
-      // Process image attachments
-      for (const attachment of message.attachments) {
-        if (!attachment.content_type?.startsWith('image/')) continue;
+    // Determine what to keep and what to add/remove
+    const currentMessages = new Set(messages.map(m => m.id));
+    const approvedMessageIds = new Set(approvedMessages.map(m => m.message.id));
+    
+    const imagesToKeep = cacheData.images.filter(img => 
+      currentMessages.has(img.messageId) && approvedMessageIds.has(img.messageId)
+    );
 
+    const imagesToRemove = cacheData.images.filter(img => 
+      !currentMessages.has(img.messageId) || !approvedMessageIds.has(img.messageId)
+    );
+
+    const existingImageMessageIds = new Set(imagesToKeep.map(img => img.messageId));
+    const newMessages = approvedMessages.filter(m => !existingImageMessageIds.has(m.message.id));
+
+    console.log(`Keeping: ${imagesToKeep.length}, Removing: ${imagesToRemove.length}, New: ${newMessages.length}`);
+
+    // Remove old blobs
+    if (imagesToRemove.length > 0) {
+      const deletePromises = imagesToRemove.map(img => deleteBlob(img.src));
+      await Promise.allSettled(deletePromises);
+    }
+
+    // Process new messages
+    const newImages: GalleryImage[] = [];
+    
+    for (const { message, attachments } of newMessages) {
+      const attachmentPromises = attachments.map(async (attachment) => {
         try {
-          // Generate unique filename
           const timestamp = Date.now();
-          const extension = path.extname(attachment.filename);
-          const uniqueFilename = `${timestamp}_${message.id}_${attachment.id}${extension}`;
+          const extension = attachment.filename.split('.').pop() || 'jpg';
+          const uniqueFilename = `${timestamp}_${message.id}_${attachment.id}.${extension}`;
 
-          // Download and save to Vercel Blob
           const blobUrl = await downloadImage(attachment.url, uniqueFilename);
-
-          // Generate title from message content or filename
           const title = generateTitle(message.content, attachment.filename);
 
-          // Create gallery entry
-          const galleryEntry: GalleryImage = {
+          return {
             id: `${message.id}_${attachment.id}`,
             messageId: message.id,
-            src: blobUrl, // Now stores blob URL instead of local path
+            src: blobUrl,
             alt: `Fotka od ${message.author.global_name || message.author.username}`,
-            title: title,
+            title,
             author: message.author.global_name || message.author.username,
             timestamp: message.timestamp,
             filename: attachment.filename,
             width: attachment.width,
             height: attachment.height
           };
-
-          galleryImages.push(galleryEntry);
-          changesMade = true;
-          console.log(`New blob added: ${title} by ${galleryEntry.author}`);
         } catch (error) {
-          console.error(`Error processing attachment ${attachment.id}:`, error);
+          console.error(`Failed to process attachment ${attachment.id}:`, error);
+          return null;
         }
+      });
+
+      const results = await Promise.allSettled(attachmentPromises);
+      const successful = results
+        .filter((r): r is PromiseFulfilledResult<GalleryImage> => 
+          r.status === 'fulfilled' && r.value !== null
+        )
+        .map(r => r.value);
+
+      newImages.push(...successful);
+    }
+
+    // Combine and sort results
+    const finalImages = [...imagesToKeep, ...newImages]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    // Update cache structure
+    const updatedCacheData: CachedGalleryData = {
+      images: finalImages,
+      lastUpdate: now,
+      lastDiscordCheck: now,
+      messageIds: currentMessageIds
+    };
+
+    // Save to storage
+    await saveGalleryData(updatedCacheData);
+
+    const duration = Date.now() - startTime;
+    console.log(`Gallery update completed in ${duration}ms`);
+
+    return {
+      images: finalImages,
+      totalCount: finalImages.length,
+      fromCache: false,
+      stats: {
+        removed: imagesToRemove.length,
+        added: newImages.length,
+        kept: imagesToKeep.length,
+        duration
       }
-    }
-
-    // Sort by timestamp (newest first)
-    galleryImages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    // Save updated gallery data if changes were made
-    if (changesMade) {
-      await saveGalleryData(galleryImages);
-    }
-
-    return NextResponse.json({
-      images: galleryImages,
-      totalCount: galleryImages.length,
-      changes: changesMade
-    });
+    };
 
   } catch (error) {
-    console.error("Unexpected error:", error);
-    return NextResponse.json({ 
-      error: "Internal server error", 
-      details: error instanceof Error ? error.message : "Unknown error" 
-    }, { status: 500 });
+    const duration = Date.now() - startTime;
+    console.error(`Gallery update failed after ${duration}ms:`, error);
+    
+    // Return cached data on error
+    const fallbackData = cacheData || { images: [], lastUpdate: 0, lastDiscordCheck: 0, messageIds: [] };
+    return { 
+      images: fallbackData.images,
+      totalCount: fallbackData.images.length,
+      fromCache: true
+    };
+  } finally {
+    processingLock = false;
   }
 }
 
+export async function GET(request: Request) {
+  console.log('Starting gallery request...');
+  
+  // Check for force update parameter
+  const url = new URL(request.url);
+  const forceUpdate = url.searchParams.get('force') === 'true';
+  
+  const result = await processGalleryUpdate(forceUpdate);
+  
+  return NextResponse.json({
+    ...result,
+    timestamp: Date.now()
+  });
+}
 
-// Webhook endpoint for real-time updates when reactions are added
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    // Process webhook payload for reaction events
-    if (body.t === 'MESSAGE_REACTION_ADD' || body.t === 'MESSAGE_REACTION_REMOVE') {
-      const { channel_id, message_id, user_id, emoji } = body.d;
+    // Clear cache on specific webhook events
+    if (
+      (body.t === 'MESSAGE_REACTION_ADD' || body.t === 'MESSAGE_REACTION_REMOVE') &&
+      body.d?.channel_id === CONFIG.GALLERY_CHANNEL_ID &&
+      body.d?.emoji?.name === CONFIG.CROWN_EMOJI
+    ) {
+      console.log('Crown reaction changed - invalidating cache');
+      galleryCache = null;
+      roleCache.clear();
       
-      // Check if it's crown emoji in gallery channel
-      if (channel_id === GALLERY_CHANNEL_ID && emoji.name === CROWN_EMOJI) {
-        const guildId = process.env.DISCORD_GUILD_ID;
-        const botToken = process.env.DISCORD_BOT_TOKEN;
-        
-        if (guildId && botToken) {
-          // Check if user has approved role
-          if (await hasApprovedRole(user_id, guildId, botToken)) {
-            console.log(`Crown reaction ${body.t === 'MESSAGE_REACTION_ADD' ? 'added' : 'removed'}, triggering gallery update`);
-            // Trigger gallery update by calling GET endpoint internally
-            await GET();
-          }
-        }
-      }
+      // Trigger update in background
+      processGalleryUpdate(true).catch(console.error);
     }
 
-    // Process webhook payload for message deletion
-    if (body.t === 'MESSAGE_DELETE') {
-      const { channel_id, id: message_id } = body.d;
+    if (body.t === 'MESSAGE_DELETE' && body.d?.channel_id === CONFIG.GALLERY_CHANNEL_ID) {
+      console.log('Message deleted - invalidating cache');
+      galleryCache = null;
       
-      // Check if it's in gallery channel
-      if (channel_id === GALLERY_CHANNEL_ID) {
-        console.log('Message deleted in gallery channel, triggering gallery update');
-        // Trigger gallery update to remove associated images
-        await GET();
-      }
+      // Trigger update in background
+      processGalleryUpdate(true).catch(console.error);
     }
 
     return NextResponse.json({ success: true });

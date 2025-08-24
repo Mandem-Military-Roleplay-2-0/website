@@ -81,14 +81,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="cs" className={`${dmSans.variable} ${spaceGrotesk.variable} dark`}>
-      <head>
-        <GoogleTagManager />
-      </head>
       <body className="antialiased">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+
           {children}
           <CookieConsent />
-        </ThemeProvider>
+
       </body>
     </html>
   )
