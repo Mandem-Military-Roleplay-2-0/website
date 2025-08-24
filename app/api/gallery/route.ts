@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from 'fs/promises';
 import path from 'path';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 
 export const runtime = "nodejs";
 
@@ -66,7 +66,6 @@ const APPROVED_ROLES = [
 
 const GALLERY_CHANNEL_ID = "1407360658952945698";
 const CROWN_EMOJI = "👑"; // :crown: emoji
-const IMAGES_DIR = path.join(process.cwd(), 'public', 'gallery');
 
 // Generate title from message content or fallback to filename
 function generateTitle(messageContent: string, filename: string): string {
@@ -88,14 +87,6 @@ function generateTitle(messageContent: string, filename: string): string {
   return filename.split('.')[0] || 'Bez názvu';
 }
 
-// Ensure gallery directory exists
-async function ensureGalleryDir() {
-  try {
-    await fs.access(IMAGES_DIR);
-  } catch {
-    await fs.mkdir(IMAGES_DIR, { recursive: true });
-  }
-}
 
 // Download and save image from Discord CDN
 async function downloadImage(url: string, filename: string): Promise<string> {
@@ -110,12 +101,13 @@ async function downloadImage(url: string, filename: string): Promise<string> {
       access: 'public',
     });
     
-    return blob.url; // Returns full URL to image
+    return blob.url; // Returns full URL to blob
   } catch (error) {
     console.error('Error downloading image:', error);
     throw error;
   }
 }
+
 
 // Check if user has approved role
 async function hasApprovedRole(userId: string, guildId: string, botToken: string): Promise<boolean> {
@@ -169,16 +161,16 @@ async function loadGalleryData(): Promise<GalleryImage[]> {
   }
 }
 
-// Delete image file from filesystem
-async function deleteImage(imagePath: string): Promise<void> {
+async function deleteImage(blobUrl: string): Promise<void> {
   try {
-    const fullPath = path.join(process.cwd(), 'public', imagePath);
-    await fs.unlink(fullPath);
-    console.log(`Image deleted: ${imagePath}`);
+    // Vercel Blob URLs vypadají jako: https://xyz.public.blob.vercel-storage.com/filename
+    await del(blobUrl);
+    console.log(`Blob deleted: ${blobUrl}`);
   } catch (error) {
-    console.error(`Error deleting image ${imagePath}:`, error);
+    console.error(`Error deleting blob ${blobUrl}:`, error);
   }
 }
+
 async function saveGalleryData(images: GalleryImage[]): Promise<void> {
   try {
     const dataDir = path.join(process.cwd(), 'data');
@@ -203,7 +195,6 @@ export async function GET() {
       }, { status: 500 });
     }
 
-    await ensureGalleryDir();
 
     // Load existing gallery data
     let galleryImages = await loadGalleryData();
@@ -229,12 +220,12 @@ export async function GET() {
     const messages: DiscordMessage[] = await messagesRes.json();
     let changesMade = false;
 
-    // First, check for removed messages and remove their images
+    // First, check for removed messages and remove their blobs
     const messageIds = new Set(messages.map(m => m.id));
     const imagesToRemove = galleryImages.filter(img => !messageIds.has(img.messageId));
     
     for (const imageToRemove of imagesToRemove) {
-      // Delete image file
+      // Delete blob (src is now blob URL)
       await deleteImage(imageToRemove.src);
       
       // Remove from gallery array
@@ -242,7 +233,7 @@ export async function GET() {
       if (index > -1) {
         galleryImages.splice(index, 1);
         changesMade = true;
-        console.log(`Image removed due to deleted message: ${imageToRemove.title} by ${imageToRemove.author}`);
+        console.log(`Blob removed due to deleted message: ${imageToRemove.title} by ${imageToRemove.author}`);
       }
     }
 
@@ -268,7 +259,7 @@ export async function GET() {
       // If there are existing images but no approval anymore, remove them
       if (existingImages.length > 0 && !hasApproval) {
         for (const existingImage of existingImages) {
-          // Delete image file
+          // Delete blob (src is now blob URL)
           await deleteImage(existingImage.src);
           
           // Remove from gallery array
@@ -276,7 +267,7 @@ export async function GET() {
           if (index > -1) {
             galleryImages.splice(index, 1);
             changesMade = true;
-            console.log(`Image removed due to lost approval: ${existingImage.title} by ${existingImage.author}`);
+            console.log(`Blob removed due to lost approval: ${existingImage.title} by ${existingImage.author}`);
           }
         }
         continue;
@@ -298,8 +289,8 @@ export async function GET() {
           const extension = path.extname(attachment.filename);
           const uniqueFilename = `${timestamp}_${message.id}_${attachment.id}${extension}`;
 
-          // Download and save image
-          const localPath = await downloadImage(attachment.url, uniqueFilename);
+          // Download and save to Vercel Blob
+          const blobUrl = await downloadImage(attachment.url, uniqueFilename);
 
           // Generate title from message content or filename
           const title = generateTitle(message.content, attachment.filename);
@@ -308,7 +299,7 @@ export async function GET() {
           const galleryEntry: GalleryImage = {
             id: `${message.id}_${attachment.id}`,
             messageId: message.id,
-            src: localPath,
+            src: blobUrl, // Now stores blob URL instead of local path
             alt: `Fotka od ${message.author.global_name || message.author.username}`,
             title: title,
             author: message.author.global_name || message.author.username,
@@ -320,7 +311,7 @@ export async function GET() {
 
           galleryImages.push(galleryEntry);
           changesMade = true;
-          console.log(`New image added: ${title} by ${galleryEntry.author}`);
+          console.log(`New blob added: ${title} by ${galleryEntry.author}`);
         } catch (error) {
           console.error(`Error processing attachment ${attachment.id}:`, error);
         }
@@ -349,6 +340,7 @@ export async function GET() {
     }, { status: 500 });
   }
 }
+
 
 // Webhook endpoint for real-time updates when reactions are added
 export async function POST(request: Request) {
