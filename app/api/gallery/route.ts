@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from 'fs/promises';
 import path from 'path';
+import { put } from '@vercel/blob';
 
 export const runtime = "nodejs";
 
@@ -104,10 +105,12 @@ async function downloadImage(url: string, filename: string): Promise<string> {
     
     const buffer = await response.arrayBuffer();
     const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const imagePath = path.join(IMAGES_DIR, sanitizedFilename);
     
-    await fs.writeFile(imagePath, Buffer.from(buffer));
-    return `/gallery/${sanitizedFilename}`;
+    const blob = await put(sanitizedFilename, buffer, {
+      access: 'public',
+    });
+    
+    return blob.url; // Returns full URL to image
   } catch (error) {
     console.error('Error downloading image:', error);
     throw error;
