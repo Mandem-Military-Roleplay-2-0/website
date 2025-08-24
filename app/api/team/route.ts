@@ -83,7 +83,7 @@ const roleMapping: Record<string, RoleConfig> = {
   "1407360962281082971": { // Owner
     category: "leadership",
     title: "Zakladatel & Majitel",
-    description: "Zakladatel serveru a majitel",
+    description: "Opice co to platí",
     icon: "Crown",
     priority: 1
   },
