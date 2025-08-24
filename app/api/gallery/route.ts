@@ -63,12 +63,15 @@ const CONFIG = {
   GALLERY_CHANNEL_ID: "1407360658952945698",
   CROWN_EMOJI: "👑",
   CACHE_TTL: 2 * 60 * 1000, // 2 minuty
-  DISCORD_CHECK_TTL: 30 * 1000, // 30 sekund
-  BLOB_CHECK_TTL: 5 * 60 * 1000, // 5 minut - kontrola existence blob-ů
+  DISCORD_CHECK_TTL: 2 * 60 * 1000, // 2 minuty - zkráceno z 30s
+  BLOB_CHECK_TTL: 10 * 60 * 1000, // 10 minut - prodlouženo z 5 minut
   ROLE_CACHE_TTL: 15 * 60 * 1000, // 15 minut
   MAX_CONCURRENT: 2,
   REQUEST_TIMEOUT: 10000,
-  CACHE_VERSION: "v1.2"
+  CACHE_VERSION: "v1.2",
+  // Nové - automatické pozadí checkování
+  AUTO_CHECK_INTERVAL: 3 * 60 * 1000, // 3 minuty
+  AUTO_CHECK_ENABLED: true
 };
 
 // Globální cache
@@ -81,6 +84,54 @@ const processingState = {
   startTime: 0,
   maxDuration: 60000 // 60 sekund timeout
 };
+
+// Auto-check system
+let autoCheckTimer: NodeJS.Timeout | null = null;
+let lastAutoCheck = 0;
+
+// Spuštění automatického checkování na pozadí
+function startAutoCheck() {
+  if (!CONFIG.AUTO_CHECK_ENABLED || autoCheckTimer) {
+    return; // Už běží nebo je vypnuto
+  }
+
+  console.log('Starting automatic gallery check system...');
+  
+  autoCheckTimer = setInterval(async () => {
+    const now = Date.now();
+    
+    // Přeskoč pokud je něco v procesu nebo jsme checkovali nedávno
+    if (processingState.isProcessing || (now - lastAutoCheck) < CONFIG.AUTO_CHECK_INTERVAL) {
+      return;
+    }
+
+    try {
+      console.log('🔄 Auto-check: Starting background gallery update...');
+      lastAutoCheck = now;
+      
+      const result = await processGalleryUpdate(false);
+      
+      if (result.error) {
+        console.error('🔄 Auto-check failed:', result.error);
+      } else if (!result.fromCache) {
+        console.log(`🔄 Auto-check: Updated gallery with ${result.totalCount} images`);
+      } else {
+        console.log(`🔄 Auto-check: Gallery up to date (${result.totalCount} images)`);
+      }
+    } catch (error) {
+      console.error('🔄 Auto-check error:', error);
+    }
+  }, CONFIG.AUTO_CHECK_INTERVAL);
+}
+
+// Zastavení automatického checkování
+function stopAutoCheck() {
+  if (autoCheckTimer) {
+    clearInterval(autoCheckTimer);
+    autoCheckTimer = null;
+    console.log('Stopped automatic gallery check system');
+  }
+}
 
 // Utility: Bezpečný fetch s timeout
 async function safeFetch(url: string, options: RequestInit = {}, timeout = CONFIG.REQUEST_TIMEOUT): Promise<Response> {
@@ -351,8 +402,7 @@ async function downloadImageSafely(url: string, filename: string, maxRetries = 2
       const blob = await put(uniqueFilename, buffer, { 
         access: 'public',
         contentType: contentType || 'image/jpeg',
-        addRandomSuffix: false, // Už máme vlastní suffix
-        allowOverwrite: true
+        addRandomSuffix: false // Už máme vlastní suffix
       });
       
       console.log(`Successfully uploaded ${filename} as ${uniqueFilename}`);
@@ -448,7 +498,6 @@ async function saveGalleryDataToStorage(cacheData: CachedGalleryData): Promise<b
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
-      allowOverwrite: true,
     });
     
     galleryCache = { ...dataToSave };
@@ -914,17 +963,22 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('Webhook received:', body.t, body.d?.channel_id);
     
+    // Spusť auto-check system při prvním webhook-u
+    if (CONFIG.AUTO_CHECK_ENABLED && !autoCheckTimer) {
+      startAutoCheck();
+    }
+    
     // Reakce na crown emoji
     if (
       (body.t === 'MESSAGE_REACTION_ADD' || body.t === 'MESSAGE_REACTION_REMOVE') &&
       body.d?.channel_id === CONFIG.GALLERY_CHANNEL_ID &&
       body.d?.emoji?.name === CONFIG.CROWN_EMOJI
     ) {
-      console.log('Crown reaction changed - invalidating cache');
+      console.log('👑 Crown reaction changed - invalidating cache');
       galleryCache = null;
       roleCache.clear();
       
-      // Spusť update na pozadí
+      // Okamžitý update pro crown změny
       processGalleryUpdate(true).catch(error => 
         console.error('Background update failed:', error)
       );
@@ -935,9 +989,10 @@ export async function POST(request: Request) {
       body.t === 'MESSAGE_DELETE' && 
       body.d?.channel_id === CONFIG.GALLERY_CHANNEL_ID
     ) {
-      console.log('Message deleted in gallery channel - invalidating cache');
+      console.log('🗑️ Message deleted in gallery channel - invalidating cache');
       galleryCache = null;
       
+      // Okamžitý update pro smazání
       processGalleryUpdate(true).catch(error => 
         console.error('Background update failed:', error)
       );
@@ -949,7 +1004,7 @@ export async function POST(request: Request) {
       body.d?.channel_id === CONFIG.GALLERY_CHANNEL_ID &&
       body.d?.attachments?.length > 0
     ) {
-      console.log('New message with attachments - invalidating cache');
+      console.log('📸 New message with attachments - invalidating cache');
       galleryCache = null;
       
       // Krátká prodleva před update (Discord někdy potřebuje čas)
