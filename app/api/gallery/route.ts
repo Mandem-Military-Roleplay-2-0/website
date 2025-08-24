@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from 'fs/promises';
 import path from 'path';
-import { put, del } from '@vercel/blob';
+import { put, del, head } from '@vercel/blob';
 
 export const runtime = "nodejs";
 
@@ -150,16 +150,21 @@ async function getCrownReactionUsers(messageId: string, channelId: string, botTo
   }
 }
 
-// Load existing gallery data
 async function loadGalleryData(): Promise<GalleryImage[]> {
   try {
-    const dataPath = path.join(process.cwd(), 'data', 'gallery.json');
-    const data = await fs.readFile(dataPath, 'utf-8');
-    return JSON.parse(data);
+    // nejdřív zjistíme, jestli soubor existuje
+    const blob = await head("gallery.json").catch(() => null);
+    if (!blob) return [];
+
+    const res = await fetch(blob.url);
+    if (!res.ok) return [];
+    return await res.json();
   } catch (error) {
+    console.error("Error loading gallery.json from blob:", error);
     return [];
   }
 }
+
 
 async function deleteImage(blobUrl: string): Promise<void> {
   try {
@@ -173,13 +178,14 @@ async function deleteImage(blobUrl: string): Promise<void> {
 
 async function saveGalleryData(images: GalleryImage[]): Promise<void> {
   try {
-    const dataDir = path.join(process.cwd(), 'data');
-    await fs.mkdir(dataDir, { recursive: true });
-    
-    const dataPath = path.join(dataDir, 'gallery.json');
-    await fs.writeFile(dataPath, JSON.stringify(images, null, 2));
+    await put("gallery.json", JSON.stringify(images, null, 2), {
+      access: "public",
+      contentType: "application/json",
+      addRandomSuffix: false, // vždy přepíše stejný soubor
+    });
+    console.log("Gallery data saved to blob");
   } catch (error) {
-    console.error('Error saving gallery data:', error);
+    console.error("Error saving gallery.json to blob:", error);
     throw error;
   }
 }
