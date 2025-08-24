@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://mandemmilitary.cz"),
+  metadataBase: new URL("https://www.mandemmilitary.cz"),
   alternates: {
     canonical: "/",
   },
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     title: "Mandem Military | FiveM Military Roleplay",
     description:
       "Připojte se k nejlepšímu vojenskému FiveM serveru. Realistický vojenský roleplay s aktivní komunitou.",
-    url: "https://mandemmilitary.cz",
+    url: "https://www.mandemmilitary.cz",
     siteName: "Mandem Military",
     images: [
       {
