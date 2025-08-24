@@ -22,27 +22,20 @@ export function GalleryGrid() {
   const [selectedImage, setSelectedImage] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({})
 
-  // Fetch gallery images from API
+  // Fetch gallery images
   useEffect(() => {
     const fetchGallery = async () => {
       try {
         setLoading(true)
         const response = await fetch('/api/gallery')
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
         const data = await response.json()
-        console.log('Fetched gallery data:', data)
         setGalleryImages(data.images || [])
         setError(null)
       } catch (err) {
-        console.error('Error fetching gallery:', err)
         setError('Nepodařilo se načíst galerii')
-        
-        // Fallback to placeholder images if API fails
         setGalleryImages([
           {
             id: "1",
@@ -77,52 +70,34 @@ export function GalleryGrid() {
     fetchGallery()
   }, [])
 
-  const openLightbox = (imageIndex: number) => {
-    setSelectedImage(imageIndex)
-  }
-
-  const closeLightbox = () => {
-    setSelectedImage(null)
-  }
+  const openLightbox = (imageIndex: number) => setSelectedImage(imageIndex)
+  const closeLightbox = () => setSelectedImage(null)
 
   const navigateImage = (direction: "prev" | "next") => {
     if (selectedImage === null) return
-
     let newIndex
     if (direction === "prev") {
       newIndex = selectedImage > 0 ? selectedImage - 1 : galleryImages.length - 1
     } else {
       newIndex = selectedImage < galleryImages.length - 1 ? selectedImage + 1 : 0
     }
-
     setSelectedImage(newIndex)
   }
 
-  // Handle keyboard navigation
+  // Keyboard nav
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (selectedImage === null) return
-
       switch (event.key) {
-        case 'Escape':
-          closeLightbox()
-          break
-        case 'ArrowLeft':
-          navigateImage('prev')
-          break
-        case 'ArrowRight':
-          navigateImage('next')
-          break
+        case 'Escape': closeLightbox(); break
+        case 'ArrowLeft': navigateImage('prev'); break
+        case 'ArrowRight': navigateImage('next'); break
       }
     }
-
     if (selectedImage !== null) {
       document.addEventListener('keydown', handleKeyDown)
     }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selectedImage])
 
   if (loading) {
@@ -160,12 +135,20 @@ export function GalleryGrid() {
               onClick={() => openLightbox(index)}
             >
               <div className="relative aspect-[4/3] overflow-hidden">
+                {!loadedImages[image.id] && (
+                  <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+                )}
                 <Image
                   src={image.src}
                   alt={image.alt}
                   fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  className={`object-cover transition-transform duration-300 group-hover:scale-105 ${
+                    loadedImages[image.id] ? "opacity-100" : "opacity-0"
+                  }`}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  onLoadingComplete={() =>
+                    setLoadedImages((prev) => ({ ...prev, [image.id]: true }))
+                  }
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
               </div>
@@ -246,7 +229,6 @@ export function GalleryGrid() {
               </div>
             </div>
 
-            {/* Navigation indicator */}
             {galleryImages.length > 1 && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 rounded-full px-3 py-1 text-white text-sm">
                 {selectedImage + 1} / {galleryImages.length}
