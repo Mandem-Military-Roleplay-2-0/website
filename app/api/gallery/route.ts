@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { put, del, head } from '@vercel/blob';
+import { put, del, head, list } from '@vercel/blob';
 
 export const runtime = "nodejs";
 
@@ -47,8 +47,9 @@ interface CachedGalleryData {
   images: GalleryImage[];
   lastUpdate: number;
   lastDiscordCheck: number;
+  lastBlobCheck: number; // Nové - kdy jsme naposledy kontrolovali blob storage
   messageIds: string[];
-  version: string; // Pro tracking verzí cache
+  version: string;
 }
 
 // Configuration
@@ -63,21 +64,22 @@ const CONFIG = {
   CROWN_EMOJI: "👑",
   CACHE_TTL: 2 * 60 * 1000, // 2 minuty
   DISCORD_CHECK_TTL: 30 * 1000, // 30 sekund
+  BLOB_CHECK_TTL: 5 * 60 * 1000, // 5 minut - kontrola existence blob-ů
   ROLE_CACHE_TTL: 15 * 60 * 1000, // 15 minut
-  MAX_CONCURRENT: 2, // Sníženo z 3 na 2
-  REQUEST_TIMEOUT: 10000, // Zvýšeno na 10s
-  CACHE_VERSION: "v1.1"
+  MAX_CONCURRENT: 2,
+  REQUEST_TIMEOUT: 10000,
+  CACHE_VERSION: "v1.2"
 };
 
-// Globální cache s timeout ochranou
+// Globální cache
 let galleryCache: CachedGalleryData | null = null;
 const roleCache = new Map<string, { hasRole: boolean; timestamp: number }>();
 
-// Bezpečnější lock system
+// Processing state
 const processingState = {
   isProcessing: false,
   startTime: 0,
-  maxDuration: 60000 // 60 sekund timeout pro processing
+  maxDuration: 60000 // 60 sekund timeout
 };
 
 // Utility: Bezpečný fetch s timeout
@@ -98,11 +100,134 @@ async function safeFetch(url: string, options: RequestInit = {}, timeout = CONFI
   }
 }
 
+// Kontrola existence blob-u
+async function blobExists(url: string): Promise<boolean> {
+  try {
+    const response = await safeFetch(url, { method: 'HEAD' }, 5000);
+    return response.ok;
+  } catch (error) {
+    console.warn(`Blob check failed for ${url}:`, error);
+    return false;
+  }
+}
+
+// Validace a oprava blob storage
+async function validateAndFixBlobs(images: GalleryImage[], botToken: string): Promise<GalleryImage[]> {
+  console.log('Validating blob storage...');
+  const validImages: GalleryImage[] = [];
+  const invalidImages: GalleryImage[] = [];
+
+  // Kontrola existence všech blob-ů paralelně (v malých batch-ích)
+  const batchSize = 5;
+  for (let i = 0; i < images.length; i += batchSize) {
+    const batch = images.slice(i, i + batchSize);
+    
+    const validationPromises = batch.map(async (image) => {
+      const exists = await blobExists(image.src);
+      return { image, exists };
+    });
+
+    const results = await Promise.allSettled(validationPromises);
+    
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        if (result.value.exists) {
+          validImages.push(result.value.image);
+        } else {
+          console.warn(`Blob missing for image ${result.value.image.id}: ${result.value.image.src}`);
+          invalidImages.push(result.value.image);
+        }
+      } else {
+        console.error('Validation failed:', result.reason);
+      }
+    });
+  }
+
+  console.log(`Blob validation: ${validImages.length} valid, ${invalidImages.length} invalid`);
+
+  // Pokud jsou nějaké nevalidní obrázky, pokus se je re-uploadnout
+  if (invalidImages.length > 0) {
+    console.log(`Attempting to re-upload ${invalidImages.length} missing images...`);
+    
+    for (const image of invalidImages) {
+      try {
+        // Pokus se získat původní URL z Discordu
+        const messageResponse = await safeFetch(
+          `https://discord.com/api/v10/channels/${CONFIG.GALLERY_CHANNEL_ID}/messages/${image.messageId}`,
+          { headers: { Authorization: `Bot ${botToken}` } }
+        );
+
+        if (!messageResponse.ok) {
+          console.error(`Cannot fetch message ${image.messageId} for re-upload`);
+          continue;
+        }
+
+        const message: DiscordMessage = await messageResponse.json();
+        const attachment = message.attachments.find(a => 
+          image.filename === a.filename || 
+          image.id.includes(a.id)
+        );
+
+        if (!attachment) {
+          console.error(`Cannot find attachment for image ${image.id}`);
+          continue;
+        }
+
+        // Re-upload obrázek
+        const newBlobUrl = await downloadImageSafely(attachment.url, attachment.filename);
+        
+        // Updatuj URL v objektu
+        const repairedImage = { ...image, src: newBlobUrl };
+        validImages.push(repairedImage);
+        
+        console.log(`Successfully re-uploaded image ${image.id}`);
+        
+        // Krátká pauza mezi re-upload-y
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (error) {
+        console.error(`Failed to re-upload image ${image.id}:`, error);
+        // Nechej nevalidní obrázek mimo finální seznam
+      }
+    }
+  }
+
+  return validImages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+// Vyčisti orphaned blob-y (blob-y bez odpovídající image v cache)
+async function cleanupOrphanedBlobs(validImages: GalleryImage[]): Promise<void> {
+  try {
+    console.log('Checking for orphaned blobs...');
+    const { blobs } = await list({ limit: 1000 });
+    
+    const validUrls = new Set(validImages.map(img => img.src));
+    const orphanedBlobs = blobs.filter(blob => 
+      blob.pathname !== 'gallery.json' && // Nemaž cache soubor
+      !validUrls.has(blob.url)
+    );
+
+    if (orphanedBlobs.length > 0) {
+      console.log(`Found ${orphanedBlobs.length} orphaned blobs, cleaning up...`);
+      
+      const deletePromises = orphanedBlobs.map(blob => 
+        deleteBlobSafely(blob.url)
+      );
+      
+      await Promise.allSettled(deletePromises);
+      console.log('Orphaned blobs cleanup completed');
+    } else {
+      console.log('No orphaned blobs found');
+    }
+  } catch (error) {
+    console.error('Failed to cleanup orphaned blobs:', error);
+  }
+}
+
 // Kontrola a reset processing lock
 function checkAndResetProcessingLock(): boolean {
   const now = Date.now();
   
-  // Reset lock pokud běží moc dlouho
   if (processingState.isProcessing && (now - processingState.startTime) > processingState.maxDuration) {
     console.warn('Processing lock timeout - resetting');
     processingState.isProcessing = false;
@@ -112,7 +237,7 @@ function checkAndResetProcessingLock(): boolean {
   return processingState.isProcessing;
 }
 
-// Optimalizovaná kontrola rolí s error handling
+// Optimalizovaná kontrola rolí
 async function hasApprovedRole(userId: string, guildId: string, botToken: string): Promise<boolean> {
   const cacheKey = `${userId}_${guildId}`;
   const cached = roleCache.get(cacheKey);
@@ -125,18 +250,15 @@ async function hasApprovedRole(userId: string, guildId: string, botToken: string
     const response = await safeFetch(
       `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
       { headers: { Authorization: `Bot ${botToken}` } },
-      5000 // Kratší timeout pro role
+      5000
     );
 
     if (!response.ok) {
-      // Específické handling různých error kódů
       if (response.status === 404) {
-        // Uživatel není v serveru
         roleCache.set(cacheKey, { hasRole: false, timestamp: Date.now() });
         return false;
       }
       if (response.status === 429) {
-        // Rate limit - použij cached hodnotu pokud existuje
         return cached ? cached.hasRole : false;
       }
       throw new Error(`HTTP ${response.status}`);
@@ -150,12 +272,11 @@ async function hasApprovedRole(userId: string, guildId: string, botToken: string
     return hasRole;
   } catch (error) {
     console.error(`Role check failed for ${userId}:`, error);
-    // Při error vrať cached hodnotu nebo false
     return cached ? cached.hasRole : false;
   }
 }
 
-// Získání crown reactions s error handling
+// Získání crown reactions
 async function getCrownUsers(messageId: string, botToken: string): Promise<string[]> {
   try {
     const response = await safeFetch(
@@ -165,7 +286,7 @@ async function getCrownUsers(messageId: string, botToken: string): Promise<strin
     );
 
     if (!response.ok) {
-      if (response.status === 404) return []; // Message nebo reaction neexistuje
+      if (response.status === 404) return [];
       throw new Error(`HTTP ${response.status}`);
     }
     
@@ -206,7 +327,7 @@ async function downloadImageSafely(url: string, filename: string, maxRetries = 2
     try {
       console.log(`Downloading ${filename} (attempt ${attempt}/${maxRetries})`);
       
-      const response = await safeFetch(url, {}, 20000); // 20s timeout pro download
+      const response = await safeFetch(url, {}, 20000);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -221,24 +342,33 @@ async function downloadImageSafely(url: string, filename: string, maxRetries = 2
         throw new Error('Empty file received');
       }
 
-      // Sanitizace filename
+      // Sanitizace filename s timestamp
       const sanitized = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
       const timestamp = Date.now();
-      const uniqueFilename = `${timestamp}_${sanitized}`;
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const uniqueFilename = `gallery_${timestamp}_${randomSuffix}_${sanitized}`;
       
       const blob = await put(uniqueFilename, buffer, { 
         access: 'public',
-        contentType: contentType || 'image/jpeg'
+        contentType: contentType || 'image/jpeg',
+        addRandomSuffix: false, // Už máme vlastní suffix
+        allowOverwrite: true
       });
       
       console.log(`Successfully uploaded ${filename} as ${uniqueFilename}`);
+      
+      // Hned zkontroluj že blob existuje
+      const exists = await blobExists(blob.url);
+      if (!exists) {
+        throw new Error('Blob was not created successfully');
+      }
+      
       return blob.url;
     } catch (error) {
       lastError = error as Error;
       console.error(`Download attempt ${attempt} failed for ${filename}:`, error);
       
       if (attempt < maxRetries) {
-        // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
     }
@@ -247,7 +377,7 @@ async function downloadImageSafely(url: string, filename: string, maxRetries = 2
   throw lastError || new Error('Download failed after all retries');
 }
 
-// Načtení dat ze storage s validací
+// Načtení dat ze storage
 async function loadGalleryDataFromStorage(): Promise<CachedGalleryData> {
   try {
     const blob = await head("gallery.json").catch(() => null);
@@ -256,6 +386,7 @@ async function loadGalleryDataFromStorage(): Promise<CachedGalleryData> {
         images: [],
         lastUpdate: 0,
         lastDiscordCheck: 0,
+        lastBlobCheck: 0,
         messageIds: [],
         version: CONFIG.CACHE_VERSION
       };
@@ -268,12 +399,13 @@ async function loadGalleryDataFromStorage(): Promise<CachedGalleryData> {
     
     const data = await response.json();
     
-    // Backwards compatibility + validace
+    // Backwards compatibility
     if (Array.isArray(data)) {
       return {
-        images: data.filter(img => img && img.id && img.src), // Validace
+        images: data.filter(img => img && img.id && img.src),
         lastUpdate: Date.now(),
         lastDiscordCheck: 0,
+        lastBlobCheck: 0,
         messageIds: data.map((img: GalleryImage) => img.messageId).filter(Boolean),
         version: CONFIG.CACHE_VERSION
       };
@@ -284,6 +416,7 @@ async function loadGalleryDataFromStorage(): Promise<CachedGalleryData> {
       images: Array.isArray(data.images) ? data.images.filter(img => img && img.id && img.src) : [],
       lastUpdate: typeof data.lastUpdate === 'number' ? data.lastUpdate : 0,
       lastDiscordCheck: typeof data.lastDiscordCheck === 'number' ? data.lastDiscordCheck : 0,
+      lastBlobCheck: typeof data.lastBlobCheck === 'number' ? data.lastBlobCheck : 0,
       messageIds: Array.isArray(data.messageIds) ? data.messageIds.filter(Boolean) : [],
       version: data.version || CONFIG.CACHE_VERSION
     };
@@ -295,16 +428,16 @@ async function loadGalleryDataFromStorage(): Promise<CachedGalleryData> {
       images: [],
       lastUpdate: 0,
       lastDiscordCheck: 0,
+      lastBlobCheck: 0,
       messageIds: [],
       version: CONFIG.CACHE_VERSION
     };
   }
 }
 
-// Bezpečné uložení do storage
+// Uložení do storage
 async function saveGalleryDataToStorage(cacheData: CachedGalleryData): Promise<boolean> {
   try {
-    // Validace před uložením
     const dataToSave = {
       ...cacheData,
       images: cacheData.images.filter(img => img && img.id && img.src),
@@ -315,9 +448,9 @@ async function saveGalleryDataToStorage(cacheData: CachedGalleryData): Promise<b
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
+      allowOverwrite: true,
     });
     
-    // Update in-memory cache pouze po úspěšném uložení
     galleryCache = { ...dataToSave };
     console.log(`Successfully saved ${dataToSave.images.length} images to storage`);
     return true;
@@ -358,7 +491,7 @@ async function checkDiscordMessages(botToken: string): Promise<string[]> {
   }
 }
 
-// Hlavní funkce pro zpracování galerie - refaktorováno
+// Hlavní funkce pro zpracování galerie - s blob validací
 async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
   images: GalleryImage[];
   totalCount: number;
@@ -387,8 +520,57 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
     }
 
     const now = Date.now();
-    const cacheData = galleryCache;
+    let cacheData = galleryCache;
     
+    // Environment variables check
+    const { DISCORD_GUILD_ID: guildId, DISCORD_BOT_TOKEN: botToken } = process.env;
+    if (!guildId || !botToken) {
+      throw new Error("Missing required environment variables: DISCORD_GUILD_ID or DISCORD_BOT_TOKEN");
+    }
+
+    // Kontrola jestli potřebujeme validovat blob-y
+    const needsBlobCheck = 
+      forceUpdate || 
+      !cacheData.lastBlobCheck || 
+      (now - cacheData.lastBlobCheck) > CONFIG.BLOB_CHECK_TTL;
+
+    // Pokud máme obrázky a potřebujeme blob check
+    if (cacheData.images.length > 0 && needsBlobCheck) {
+      console.log('Validating blob storage...');
+      processingState.isProcessing = true;
+      processingState.startTime = now;
+      
+      const validatedImages = await validateAndFixBlobs(cacheData.images, botToken);
+      
+      // Pokud se počet změnil, něco jsme opravili/odebrali
+      if (validatedImages.length !== cacheData.images.length) {
+        console.log(`Blob validation changed image count: ${cacheData.images.length} -> ${validatedImages.length}`);
+        cacheData = {
+          ...cacheData,
+          images: validatedImages,
+          lastBlobCheck: now,
+          lastUpdate: now
+        };
+        
+        await saveGalleryDataToStorage(cacheData);
+        processingState.isProcessing = false;
+        
+        return {
+          images: validatedImages,
+          totalCount: validatedImages.length,
+          fromCache: false,
+          stats: { 
+            duration: Date.now() - startTime,
+            blobValidation: true,
+            fixed: cacheData.images.length - validatedImages.length
+          }
+        };
+      } else {
+        // Jenom updatuj timestamp
+        cacheData.lastBlobCheck = now;
+      }
+    }
+
     // Kontrola jestli potřebujeme kontrolovat Discord
     const needsDiscordCheck = 
       forceUpdate || 
@@ -397,18 +579,16 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
 
     if (!needsDiscordCheck) {
       console.log('Using cached data, no Discord check needed');
+      if (cacheData.lastBlobCheck !== now) {
+        cacheData.lastBlobCheck = now;
+        await saveGalleryDataToStorage(cacheData);
+      }
       return {
         images: cacheData.images,
         totalCount: cacheData.images.length,
         fromCache: true,
         stats: { duration: Date.now() - startTime }
       };
-    }
-
-    // Environment variables check
-    const { DISCORD_GUILD_ID: guildId, DISCORD_BOT_TOKEN: botToken } = process.env;
-    if (!guildId || !botToken) {
-      throw new Error("Missing required environment variables: DISCORD_GUILD_ID or DISCORD_BOT_TOKEN");
     }
 
     console.log('Checking for Discord message changes...');
@@ -438,11 +618,12 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
       currentMessageIds.some(id => !existingMessageIds.has(id)) ||
       cacheData.messageIds.some(id => !newMessageIds.has(id));
 
-    // Update lastDiscordCheck
+    // Update check timestamps
     cacheData.lastDiscordCheck = now;
+    cacheData.lastBlobCheck = now;
 
     if (!hasChanges && !forceUpdate) {
-      console.log('No message changes detected, updating check time');
+      console.log('No message changes detected, updating check times');
       await saveGalleryDataToStorage(cacheData);
       processingState.isProcessing = false;
       
@@ -456,7 +637,7 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
 
     console.log('Message changes detected, processing full update...');
 
-    // Získej detailní zprávy
+    // Zbytek logiky zpracování zůstává stejný...
     const detailedResponse = await safeFetch(
       `https://discord.com/api/v10/channels/${CONFIG.GALLERY_CHANNEL_ID}/messages?limit=100`,
       { headers: { Authorization: `Bot ${botToken}` } },
@@ -475,7 +656,7 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
 
     console.log(`Processing ${messagesWithImages.length} messages with images`);
 
-    // Zpracování zpráv v menších batch-ích
+    // Zpracování zpráv v batch-ích
     const approvedMessages = [];
     const batchSize = CONFIG.MAX_CONCURRENT;
 
@@ -489,7 +670,6 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
           
           if (crownUsers.length === 0) return null;
           
-          // Zkontroluj role pro crown users
           let hasApproval = false;
           for (const userId of crownUsers) {
             if (await hasApprovedRole(userId, guildId, botToken)) {
@@ -521,7 +701,6 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
 
       approvedMessages.push(...successful);
 
-      // Malá pauza mezi batch-ů
       if (i + batchSize < messagesWithImages.length) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -529,7 +708,7 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
 
     console.log(`Found ${approvedMessages.length} approved messages`);
 
-    // Určení co ponechat, odebrat a přidat
+    // Determine what to keep, remove and add
     const currentMessages = new Set(messages.map(m => m.id));
     const approvedMessageIds = new Set(approvedMessages.map(m => m.message.id));
     
@@ -548,14 +727,14 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
 
     console.log(`Keeping: ${imagesToKeep.length}, Removing: ${imagesToRemove.length}, New: ${newMessages.length}`);
 
-    // Odebrání starých blob-ů
+    // Remove old blobs
     if (imagesToRemove.length > 0) {
       console.log('Removing old blobs...');
       const deletePromises = imagesToRemove.map(img => deleteBlobSafely(img.src));
       await Promise.allSettled(deletePromises);
     }
 
-    // Zpracování nových obrázků
+    // Process new images
     const newImages: GalleryImage[] = [];
     
     for (const { message, attachments } of newMessages) {
@@ -582,12 +761,11 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
           newImages.push(newImage);
         } catch (error) {
           console.error(`Failed to process attachment ${attachment.id} from message ${message.id}:`, error);
-          // Pokračuj s dalšími attachments
         }
       }
     }
 
-    // Sestavení finálních dat
+    // Final images assembly
     const finalImages = [...imagesToKeep, ...newImages]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -595,12 +773,18 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
       images: finalImages,
       lastUpdate: now,
       lastDiscordCheck: now,
+      lastBlobCheck: now,
       messageIds: currentMessageIds,
       version: CONFIG.CACHE_VERSION
     };
 
-    // Uložení do storage
+    // Save to storage
     const saveSuccess = await saveGalleryDataToStorage(updatedCacheData);
+    
+    // Cleanup orphaned blobs
+    if (saveSuccess) {
+      await cleanupOrphanedBlobs(finalImages);
+    }
     
     const duration = Date.now() - startTime;
     console.log(`Gallery update completed in ${duration}ms`);
@@ -626,11 +810,11 @@ async function processGalleryUpdate(forceUpdate: boolean = false): Promise<{
     
     processingState.isProcessing = false;
     
-    // Vrať cached data při error
     const fallbackData = galleryCache || {
       images: [],
       lastUpdate: 0,
       lastDiscordCheck: 0,
+      lastBlobCheck: 0,
       messageIds: [],
       version: CONFIG.CACHE_VERSION
     };
@@ -651,9 +835,21 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const forceUpdate = url.searchParams.get('force') === 'true';
+    const validateBlobs = url.searchParams.get('validate') === 'true';
     
     if (forceUpdate) {
       console.log('Force update requested');
+      // Reset cache při force update
+      galleryCache = null;
+      roleCache.clear();
+    }
+
+    if (validateBlobs) {
+      console.log('Blob validation requested');
+      // Invalidate blob check timestamp to force validation
+      if (galleryCache) {
+        galleryCache.lastBlobCheck = 0;
+      }
     }
     
     const result = await processGalleryUpdate(forceUpdate);
@@ -661,11 +857,28 @@ export async function GET(request: Request) {
     const response = {
       success: true,
       ...result,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      blobStorage: {
+        // Přidáme info o blob storage pro debugging
+        cacheVersion: CONFIG.CACHE_VERSION,
+        lastBlobCheck: galleryCache?.lastBlobCheck || 0,
+        lastDiscordCheck: galleryCache?.lastDiscordCheck || 0
+      }
     };
 
     console.log(`=== Gallery API Response: ${result.totalCount} images, fromCache: ${result.fromCache} ===`);
-    return NextResponse.json(response);
+    
+    // Přidej CORS headers pro frontend
+    const headers = new Headers();
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    
+    return new NextResponse(JSON.stringify(response), {
+      status: 200,
+      headers
+    });
     
   } catch (error) {
     console.error('Gallery API GET error:', error);
@@ -681,6 +894,18 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+}
+
+// OPTIONS endpoint pro CORS
+export async function OPTIONS(request: Request) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
 
 // POST endpoint pro webhooks
@@ -716,6 +941,23 @@ export async function POST(request: Request) {
       processGalleryUpdate(true).catch(error => 
         console.error('Background update failed:', error)
       );
+    }
+
+    // Nová zpráva s attachments
+    if (
+      body.t === 'MESSAGE_CREATE' && 
+      body.d?.channel_id === CONFIG.GALLERY_CHANNEL_ID &&
+      body.d?.attachments?.length > 0
+    ) {
+      console.log('New message with attachments - invalidating cache');
+      galleryCache = null;
+      
+      // Krátká prodleva před update (Discord někdy potřebuje čas)
+      setTimeout(() => {
+        processGalleryUpdate(true).catch(error => 
+          console.error('Background update failed:', error)
+        );
+      }, 2000);
     }
 
     return NextResponse.json({ success: true });
