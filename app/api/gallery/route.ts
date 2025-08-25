@@ -919,16 +919,10 @@ export async function GET(request: Request) {
 
     console.log(`=== Gallery API Response: ${result.totalCount} images, fromCache: ${result.fromCache} ===`);
     
-    // Přidej CORS headers pro frontend
-    const headers = new Headers();
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    headers.set('Access-Control-Allow-Headers', 'Content-Type');
-    headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+
     
     return new NextResponse(JSON.stringify(response), {
       status: 200,
-      headers
     });
     
   } catch (error) {
@@ -947,17 +941,7 @@ export async function GET(request: Request) {
   }
 }
 
-// OPTIONS endpoint pro CORS
-export async function OPTIONS(request: Request) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
-}
+
 
 // POST endpoint pro webhooks
 export async function POST(request: Request) {
