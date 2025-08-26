@@ -8,16 +8,14 @@ export function Footer() {
 
   const footerLinks = {
     komunita: [
-      { label: "Discord", href: "#" },
-      { label: "Fórum", href: "#" },
+      { label: "Discord", href: "https://discord.gg/2xkcUtrzQH" },
       { label: "Tým", href: "/tym" },
-      { label: "Statistiky", href: "/statistiky" },
     ],
     podpora: [
       { label: "Pravidla", href: "/pravidla" },
-      { label: "Často kladené otázky", href: "#" },
-      { label: "Kontakt", href: "#" },
-      { label: "Nahlásit problém", href: "#" },
+      { label: "Často kladené otázky", href: "https://discord.gg/2xkcUtrzQH" },
+      { label: "Kontakt", href: "https://discord.gg/2xkcUtrzQH" },
+      { label: "Nahlásit problém", href: "https://discord.gg/2xkcUtrzQH" },
     ],
   }
 
@@ -85,14 +83,14 @@ export function Footer() {
 
         <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-muted-foreground text-sm">© {currentYear} Mandem Military. Všechna práva vyhrazena.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
+          {/* <div className="flex space-x-6 mt-4 md:mt-0">
             <Link href="#" className="text-muted-foreground hover:text-primary text-sm transition-colors">
               Zásady ochrany osobních údajů
             </Link>
             <Link href="#" className="text-muted-foreground hover:text-primary text-sm transition-colors">
               Podmínky použití
             </Link>
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>

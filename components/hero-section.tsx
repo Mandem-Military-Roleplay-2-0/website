@@ -59,14 +59,16 @@ export function HeroSection() {
               <Play className="mr-2 h-5 w-5" />
               Začít hrát
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground hover:scale-105 px-8 py-4 text-lg font-semibold bg-yellow-darkest/50 backdrop-blur-sm w-full sm:w-auto rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Users className="mr-2 h-5 w-5" />
-              Discord
-            </Button>
+            <a href="https://discord.gg/2xkcUtrzQH">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground hover:scale-105 px-8 py-4 text-lg font-semibold bg-yellow-darkest/50 backdrop-blur-sm w-full sm:w-auto rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Users className="mr-2 h-5 w-5" />
+                Discord
+              </Button>
+            </a>
           </motion.div>
 
           {/* Server Info */}

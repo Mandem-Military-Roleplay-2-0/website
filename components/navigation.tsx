@@ -22,7 +22,7 @@ export function Navigation() {
     { href: "/", label: "Domů" },
     { href: "/galerie", label: "Galerie" },
     { href: "/pravidla", label: "Pravidla" },
-    { href: "/statistiky", label: "Statistiky" },
+    // { href: "/statistiky", label: "Statistiky" },
     { href: "/tym", label: "Tým" },
   ]
 
@@ -61,7 +61,9 @@ export function Navigation() {
 
           {/* CTA Button */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Připojit se na server</Button>
+            <a href="https://discord.gg/2xkcUtrzQH">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Připojit se na server</Button>
+            </a>
           </div>
 
           {/* Mobile menu button */}

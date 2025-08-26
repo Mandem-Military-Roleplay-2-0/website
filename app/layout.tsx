@@ -2,9 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { DM_Sans, Space_Grotesk } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
 import { CookieConsent } from "@/components/cookie-consent"
-import { GoogleTagManager } from "@/components/google-tag-manager"
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -19,15 +17,15 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const viewport: Viewport = {
-  themeColor: "#ffba00", // sem patří barva
+  themeColor: "#ffba00",
 }
 
 export const metadata: Metadata = {
   title: "Mandem Military | FiveM Military Server",
   description:
     "Připojte se k nejlepšímu vojenskému FiveM serveru. Mandem Military nabízí realistický vojenský roleplay s aktivní komunitou a profesionálním přístupem.",
-  keywords: "FiveM, vojenský server, roleplay, Mandem Military, GTA V, multiplayer, vojenská simulace",
-  authors: [{ name: "Mandem Military Team" }],
+  keywords: "FiveM, vojenský server, roleplay, Mandem Military, GTA V, multiplayer, military",
+  authors: [{ name: "L3" }],
   creator: "Mandem Military",
   publisher: "Mandem Military",
   formatDetection: {
@@ -47,7 +45,7 @@ export const metadata: Metadata = {
     siteName: "Mandem Military",
     images: [
       {
-        url: "/mandemLogo2.png",
+        url: "/logo.png",
         alt: "Mandem Military FiveM Server",
       },
     ],
@@ -59,7 +57,7 @@ export const metadata: Metadata = {
     title: "Mandem Military | FiveM Vojenský Server",
     description:
       "Připojte se k nejlepšímu vojenskému FiveM serveru. Realistický vojenský roleplay s aktivní komunitou.",
-    images: ["/mandemLogo2.png"],
+    images: ["/logo.png"],
   },
   robots: {
     index: true,
