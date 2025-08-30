@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from "next"
 import { DM_Sans, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import { CookieConsent } from "@/components/cookie-consent"
+import Head from "next/head"
+import Script from "next/script"
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -19,6 +21,43 @@ const spaceGrotesk = Space_Grotesk({
 export const viewport: Viewport = {
   themeColor: "#ffba00",
 }
+
+const siteNavigation = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "itemListElement": [
+      {
+        "@type": "SiteNavigationElement",
+        "position": 1,
+        "name": "Domů",
+        "url": "https://mandemmilitary.cz"
+      },
+      {
+        "@type": "SiteNavigationElement",
+        "position": 2,
+        "name": "Pravidla",
+        "url": "https://mandemmilitary.cz/pravidla"
+      },
+      {
+        "@type": "SiteNavigationElement",
+        "position": 3,
+        "name": "Galerie",
+        "url": "https://mandemmilitary.cz/galerie"
+      },
+      {
+        "@type": "SiteNavigationElement",
+        "position": 4,
+        "name": "Tým",
+        "url": "https://mandemmilitary.cz/tym"
+      },
+      {
+        "@type": "SiteNavigationElement",
+        "position": 5,
+        "name": "Kontakt",
+        "url": "https://mandemmilitary.cz/kontakt"
+      }
+    ]
+  };
 
 export const metadata: Metadata = {
   title: "Mandem Military | FiveM Military Server",
@@ -79,11 +118,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="cs" className={`${dmSans.variable} ${spaceGrotesk.variable} dark`}>
+      <Head>
+          <Script id="site-nav-schema" type="application/ld+json">
+            {JSON.stringify(siteNavigation).replace(/</g, '\\u003c')}
+          </Script>
+      </Head>
       <body className="antialiased">
-
-          {children}
-          <CookieConsent />
-
+        {children}
+        <CookieConsent />
       </body>
     </html>
   )
