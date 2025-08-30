@@ -24,6 +24,7 @@ export function Navigation() {
     { href: "/pravidla", label: "Pravidla" },
     // { href: "/statistiky", label: "Statistiky" },
     { href: "/tym", label: "Tým" },
+    { href: "/lore", label: "Lore" }
   ]
 
   return (
