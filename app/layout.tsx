@@ -4,6 +4,7 @@ import { DM_Sans, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import { CookieConsent } from "@/components/cookie-consent"
 import ParallaxEffect from "@/components/ParallaxEffect"
+import Script from "next/script"
 
 
 const dmSans = DM_Sans({
@@ -133,6 +134,18 @@ export default function RootLayout({
             __html: JSON.stringify(siteNavigation).replace(/</g, "\\u003c"),
           }}
         />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-KERPN0JTEF"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-KERPN0JTEF');
+          `}
+        </Script>
       </head>
       <body className="antialiased">
         {children}
