@@ -118,11 +118,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="cs" className={`${dmSans.variable} ${spaceGrotesk.variable} dark`}>
-      <Head>
-          <Script id="site-nav-schema" type="application/ld+json">
-            {JSON.stringify(siteNavigation).replace(/</g, '\\u003c')}
-          </Script>
-      </Head>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(siteNavigation).replace(/</g, "\\u003c"),
+          }}
+        />
+      </head>
       <body className="antialiased">
         {children}
         <CookieConsent />
