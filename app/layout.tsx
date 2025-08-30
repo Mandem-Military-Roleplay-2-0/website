@@ -81,7 +81,7 @@ export const metadata: Metadata = {
   },
   metadataBase: new URL("https://www.mandemmilitary.cz"),
   alternates: {
-    canonical: "/",
+    canonical: "https://www.mandemmilitary.cz/",
   },
   openGraph: {
     title: "Mandem Military | FiveM Military Roleplay",
