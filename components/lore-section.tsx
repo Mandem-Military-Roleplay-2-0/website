@@ -113,13 +113,19 @@ export function LoreSection() {
                   <div key={event.id} className="relative">
                     <Card className="border-l-4 border-l-primary bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/10 transition-all duration-300">
                       <CardContent className="p-6">
+                        <div className="md:hidden flex-shrink-0 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 mb-4">
+                            {event.icon}
+                          </div>
+                          <span className="flex md:hidden px-3 py-1 bg-primary/20 text-primary font-medium text-sm rounded-full">
+                                {event.period}
+                              </span>
                         <div className="flex items-start space-x-4">
-                          <div className="flex-shrink-0 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20">
+                          <div className="hidden flex-shrink-0 w-16 h-16 bg-primary/10 rounded-full md:flex items-center justify-center border border-primary/20">
                             {event.icon}
                           </div>
                           <div className="flex-grow">
                             <div className="flex items-center space-x-3 mb-2">
-                              <span className="px-3 py-1 bg-primary/20 text-primary font-medium text-sm rounded-full">
+                              <span className="hidden md:flex px-3 py-1 bg-primary/20 text-primary font-medium text-sm rounded-full">
                                 {event.period}
                               </span>
                             </div>
