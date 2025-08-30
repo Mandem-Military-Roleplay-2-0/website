@@ -3,8 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { DM_Sans, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import { CookieConsent } from "@/components/cookie-consent"
-import Head from "next/head"
-import Script from "next/script"
+
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -55,6 +54,12 @@ const siteNavigation = {
         "position": 5,
         "name": "Kontakt",
         "url": "https://mandemmilitary.cz/kontakt"
+      },
+      {
+        "@type": "SiteNavigationElement",
+        "position": 6,
+        "name": "Lore",
+        "url": "https://mandemmilitary.cz/lore"
       }
     ]
   };
