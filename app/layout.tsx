@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { DM_Sans, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import { CookieConsent } from "@/components/cookie-consent"
+import ParallaxEffect from "@/components/ParallaxEffect"
 
 
 const dmSans = DM_Sans({
@@ -121,6 +122,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+
+  
   return (
     <html lang="cs" className={`${dmSans.variable} ${spaceGrotesk.variable} dark`}>
       <head>
@@ -134,6 +137,7 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <CookieConsent />
+        <ParallaxEffect />
       </body>
     </html>
   )

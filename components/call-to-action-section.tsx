@@ -5,7 +5,7 @@ import { ArrowRight, Download } from "lucide-react"
 
 export function CallToActionSection() {
   return (
-    <section className="py-20 bg-card">
+    <section className="py-20 bg-card section-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center drop-shadow-xl">
         <div className="inline-block px-4 py-2 bg-primary text-black rounded-full text-sm font-medium mb-6">
           Připoj se ještě dnes
