@@ -12,6 +12,9 @@ export const metadata: Metadata = {
     description:
       "Prohlédněte si fotografie a screenshoty z našeho FiveM serveru. Nejlepší momenty z vojenského roleplay.",
   },
+  alternates: {
+    canonical: "https://www.mandemmilitary.cz/galerie",
+  },
 }
 
 export default function GalleryPage() {

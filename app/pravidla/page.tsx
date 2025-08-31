@@ -10,6 +10,9 @@ export const metadata: Metadata = {
     title: "Pravidla serveru | Mandem Military",
     description: "Přečtěte si pravidla našeho FiveM serveru. Důležité informace pro všechny hráče Mandem Military.",
   },
+  alternates: {
+    canonical: "https://www.mandemmilitary.cz/pravidla",
+  },
 }
 
 export default function RulesPage() {

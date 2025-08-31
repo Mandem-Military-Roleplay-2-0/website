@@ -11,6 +11,9 @@ export const metadata: Metadata = {
     description:
       "Aktuální statistiky našeho FiveM serveru - počet hráčů, uptime, a další důležité informace.",
   },
+  alternates: {
+    canonical: "https://www.mandemmilitary.cz/statistiky",
+  },
 }
 
 export default function StatsPage() {

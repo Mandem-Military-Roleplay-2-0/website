@@ -10,6 +10,9 @@ export const metadata: Metadata = {
     title: "Náš tým | Mandem Military",
     description: "Seznamte se s týmem administrátorů a moderátorů serveru Mandem Military.",
   },
+  alternates: {
+    canonical: "https://www.mandemmilitary.cz/tym",
+  },
 }
 
 export default function TeamPage() {
